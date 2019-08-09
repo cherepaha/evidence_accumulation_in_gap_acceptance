@@ -41,6 +41,8 @@ class LTAPCarlaClient():
             pygame.init()
             self.world = self.client.get_world()
 
+            self.bot_speed_values = [10, 15, 20]
+
             self.joystick = pygame.joystick.Joystick(0)
             self.joystick.init()
             print('Joystick ID: %d Init status: %s' % (self.joystick.get_id(), self.joystick.get_init()))
@@ -93,6 +95,15 @@ class LTAPCarlaClient():
         except KeyboardInterrupt:
             for actor in self.world.get_actors():
                 actor.destroy()
+
+    def generate_tta_values(self):
+        tta_conditions = [4, 5, 6, 7]
+        tta_values = []
+        for tta in tta_conditions:
+            tta_values = np.append(tta_values, np.ones(15)*tta)
+        np.random.shuffle(tta_values)
+
+        return tta_values
 
     def initialize_log(self):
         log_directory = 'data'
@@ -161,8 +172,7 @@ class LTAPCarlaClient():
 
 
     def spawn_bot(self, distance_to_intersection, speed):
-        # TODO: make sure that the bots are regular-sized cars with bright colors
-        bot_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.*'))
+        bot_bp = random.choice(self.bot_actor_blueprints)
 
         ego_direction = self.active_intersection - self.origin
         spawn_location = self.active_intersection*self.block_size + \
@@ -180,7 +190,14 @@ class LTAPCarlaClient():
         sound_filename = '%s.wav' % (self.sound_cues[(number, direction)])
         file_path = os.path.join('sounds', sound_filename)
         sound = pygame.mixer.Sound(file_path)
+        sound.set_volume(0.5)
         sound.play()
+
+    def initialize_noise_sound(self):
+        file_path = 'sounds/civic_noise.wav'
+        self.noise_sound = pygame.mixer.Sound(file_path)
+        self.noise_sound.set_volume(0.1)
+        self.noise_sound.play(loops=-1)
 
     def get_actor_state(self, actor):
         state = ([actor.get_transform().location.x, -actor.get_transform().location.y,
@@ -191,7 +208,12 @@ class LTAPCarlaClient():
         return list(['%.4f' % value for value in state])
 
     def update_log(self, log, timestamp, route, intersection, current_turn):
-        log.append(([self.exp_info['subj_id'], self.exp_info['session'], route, intersection, current_turn, timestamp] + \
+        log.append((list(['%i' % value for value in [self.exp_info['subj_id'],
+                                                     self.exp_info['session'],
+                                                     route,
+                                                     intersection,
+                                                     current_turn,
+                                                     1000*timestamp]]) + \
                     self.get_actor_state(self.ego_actor) + \
                     self.get_actor_state(self.bot_actor) + \
                     list(['%.4f' % value for value in [self.control.throttle, self.control.brake, self.control.steer]])))
@@ -199,10 +221,21 @@ class LTAPCarlaClient():
     def run(self):
         try:
             print(self.exp_info)
+            tta_values = self.generate_tta_values()
+
             for i in range(self.n_routes):
+                self.initialize_noise_sound()
                 # in the path input file, -1 is turn right, 1 is turn left, 0 is go straight
                 path = np.loadtxt('path_%i.txt' % (i+1))
                 for j, current_turn in enumerate(path):
+                    tta = tta_values[-1]
+                    if (current_turn!=1):
+                        tta_values = tta_values[:-1]
+
+                    bot_speed = random.choice(self.bot_speed_values)
+                    # distance to the center of the ego car
+                    bot_distance = tta*bot_speed
+
                     is_turn_completed = False
                     is_at_active_intersection = False
                     is_first_cue_played = False
@@ -214,39 +247,54 @@ class LTAPCarlaClient():
                     trial_log = []
                     trial_start_time = time.time()
 
+                    print(j+1, current_turn, tta, bot_speed, bot_distance, self.active_intersection)
+
                     while not is_turn_completed:
                         speed = np.sqrt(self.ego_actor.get_velocity().x**2 + self.ego_actor.get_velocity().y**2)
-                        distance_to_active_intersection = self.ego_actor.get_location().distance(active_intersection_loc)
+                        acceleration = np.sqrt(self.ego_actor.get_acceleration().x**2 + self.ego_actor.get_acceleration().y**2)
+                        ego_distance = self.ego_actor.get_location().distance(active_intersection_loc)
 
-                        print(i, j, is_at_active_intersection, self.origin, self.active_intersection,
-                              current_turn, '%.3f %.3f'% (distance_to_active_intersection, speed))
+#                        print(i, j, is_at_active_intersection, self.origin, self.active_intersection,
+#                              current_turn, '%.3f %.3f'% (ego_distance, speed))
 
                         self.update_log(trial_log, time.time()-trial_start_time, i+1, j+1, current_turn)
 
                         self.update_control()
                         self.ego_actor.apply_control(self.control)
 
-                        if((not is_first_cue_played) & (self.ego_actor.get_location().distance(active_intersection_loc)<(4/5)*self.block_size)):
+                        self.noise_sound.set_volume(0.1 + speed/30)
+#                        self.noise_sound.set_volume(0.2 + speed/20)
+
+                        if((not is_first_cue_played) & (self.ego_actor.get_location().
+                                        distance(active_intersection_loc)<(4/5)*self.block_size)):
                             self.play_sound_cue(1, current_turn)
                             is_first_cue_played = True
-                        elif((not is_second_cue_played) & (self.ego_actor.get_location().distance(active_intersection_loc)<(2/5)*self.block_size)):
+                        elif((not is_second_cue_played) & (self.ego_actor.get_location().
+                                        distance(active_intersection_loc)<(1/5)*self.block_size)):
                             self.play_sound_cue(2, current_turn)
                             is_second_cue_played = True
                         # When the driver enters the intersection, we destroy the bot
-                        elif((not is_at_active_intersection) & (self.ego_actor.get_location().distance(active_intersection_loc)<10)):
+                        elif((not is_at_active_intersection) & (self.ego_actor.get_location().
+                                                            distance(active_intersection_loc)<10)):
                             is_at_active_intersection = True
                             if (not (self.bot_actor is None)):
                                 self.bot_actor.destroy()
                                 self.bot_actor = None
-                        elif((current_turn==1) & (is_at_active_intersection) & (speed<2) & (self.bot_actor is None)):
-                            self.spawn_bot(75, 20)
-                        elif((current_turn==-1) & (is_at_active_intersection) & (self.bot_actor is None)):
-                            self.spawn_bot(75, 20)
+                        # if at the left turn, wait until almost a full stop before spawning a bot
+                        elif((current_turn==1) & (is_at_active_intersection) & (speed<1) &
+                                                                        (self.bot_actor is None)):
+                            self.spawn_bot(distance_to_intersection=bot_distance-ego_distance,
+                                           speed=bot_speed)
+                        # if not at the left turn, don't wait for slowdown when spawning a bot
+                        elif((current_turn!=1) & (is_at_active_intersection) & (self.bot_actor is None)):
+                            self.spawn_bot(75, bot_speed)
                         # When the driver leaves the intersection we designate the next intersection as active
-                        elif((is_at_active_intersection) & (self.ego_actor.get_location().distance(active_intersection_loc)>10)):
+                        elif((is_at_active_intersection) & (self.ego_actor.get_location().
+                                                            distance(active_intersection_loc)>10)):
                             current_direction = self.active_intersection - self.origin
                             new_origin = self.active_intersection
-                            new_active_intersection = self.active_intersection + self.rotate(current_direction, np.pi/2*current_turn)
+                            new_active_intersection = (self.active_intersection +
+                                            self.rotate(current_direction, np.pi/2*current_turn))
                             self.origin = new_origin
                             self.active_intersection = new_active_intersection
 
@@ -257,6 +305,7 @@ class LTAPCarlaClient():
                     self.write_log(trial_log)
 
                 self.ego_actor.apply_control(self.empty_control)
+                self.noise_sound.stop()
                 self.ego_actor.set_transform(self.ego_start_position.transform)
                 self.ego_actor.set_velocity(carla.Vector3D(0,0,0))
                 time.sleep(5.0)
