@@ -38,7 +38,7 @@ class LTAPCarlaClient():
     def __init__(self):
         try:
             self.exp_info = self.get_exp_info()
-            self.n_routes = 2
+            self.n_routes_per_session = 2
 
             self.set_ff_gain()
             self.initialize_log()
@@ -47,7 +47,6 @@ class LTAPCarlaClient():
             pygame.init()
             self.world = self.client.get_world()
 
-#            self.bot_speed_values = [10, 15, 20]
             self.bot_distance_values = [80, 120, 160]
 
             # x and y indices of the intersection
@@ -70,14 +69,7 @@ class LTAPCarlaClient():
             self.bot_actor_blueprints = [random.choice(self.world.get_blueprint_library().filter(bp_name))
                                             for bp_name in self.bot_blueprint_names]
 
-            self.empty_control = carla.VehicleControl(
-                throttle = 0,
-                steer = 0,
-                brake = 0,
-                hand_brake = False,
-                reverse = False,
-                manual_gear_shift = False,
-                gear = 0)
+            self.empty_control = carla.VehicleControl(hand_brake=False, reverse=False, manual_gear_shift = False)
             self.control = self.empty_control
 
         except KeyboardInterrupt:
@@ -95,7 +87,6 @@ class LTAPCarlaClient():
         for tta in tta_conditions:
             tta_values = np.append(tta_values, np.ones(10)*tta)
         np.random.shuffle(tta_values)
-#        tta_values = np.ones(15)*4
 
         return tta_values
 
@@ -106,11 +97,11 @@ class LTAPCarlaClient():
                                                          self.exp_info['start_time'] + '.txt')
         with open(self.log_file_path, 'w') as fp:
             writer = csv.writer(fp, delimiter = '\t')
-            writer.writerow(['subj_id', 'session', 'route', 'intersection', 'turn_direction', 'timestamp',
+            writer.writerow(['subj_id', 'session', 'route', 'intersection', 'turn_direction', 't',
+                             'distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition',
                              'ego_x', 'ego_y', 'ego_vx', 'ego_vy', 'ego_ax', 'ego_ay', 'ego_yaw',
                              'bot_x', 'bot_y', 'bot_vx', 'bot_vy', 'bot_ax', 'bot_ay', 'bot_yaw',
                              'throttle', 'brake', 'steer'])
-
     def write_log(self, log):
         with open(self.log_file_path, 'a') as fp:
             writer = csv.writer(fp, delimiter = '\t', )
@@ -129,7 +120,7 @@ class LTAPCarlaClient():
         c, s = np.cos(angle), np.sin(angle)
         return np.squeeze(np.asarray(np.dot(np.matrix([[c, -s], [s, c]]), vector)))
 
-    def update_control(self):
+    def update_ego_control(self):
         reverse = False
         K1 = 1.0  # 0.55
         steerCmd = K1 * math.tan(1.1 * self.joystick.get_axis(0))
@@ -169,6 +160,8 @@ class LTAPCarlaClient():
         self.control.brake = brakeCmd
         self.control.reverse = reverse
 
+        self.ego_actor.apply_control(self.control)
+
     def spawn_ego_car(self):
         '''
         To shift the starting position from the center of the intersection to the lane where
@@ -201,6 +194,14 @@ class LTAPCarlaClient():
         bot_velocity = speed*self.rotate(ego_direction, np.pi)
         self.bot_actor.set_velocity(carla.Vector3D(bot_velocity[0], -bot_velocity[1], 0))
 
+    def update_bot_control(self, max_speed):
+        bot_speed = np.sqrt(self.bot_actor.get_velocity().x**2 + self.bot_actor.get_velocity().y**2)
+        throttle = 1 if bot_speed < max_speed else 0
+
+        control = carla.VehicleControl(throttle=throttle, hand_brake=False, reverse=False,
+                                             manual_gear_shift=False)
+        self.bot_actor.apply_control(control)
+
     def play_sound_cue(self, number, direction):
         sound_filename = '%s.wav' % (self.sound_cues[(number, direction)])
         file_path = os.path.join('sounds', sound_filename)
@@ -222,13 +223,8 @@ class LTAPCarlaClient():
                  if not (actor is None) else np.zeros(7).tolist())
         return list(['%.4f' % value for value in state])
 
-    def update_log(self, log, timestamp, route, intersection, current_turn):
-        log.append((list(['%i' % value for value in [self.exp_info['subj_id'],
-                                                     self.exp_info['session'],
-                                                     route,
-                                                     intersection,
-                                                     current_turn,
-                                                     1000*timestamp]]) + \
+    def update_log(self, log, values_to_log):
+        log.append((list(['%i' % value for value in values_to_log]) + \
                     self.get_actor_state(self.ego_actor) + \
                     self.get_actor_state(self.bot_actor) + \
                     list(['%.4f' % value for value in [self.control.throttle, self.control.brake, self.control.steer]])))
@@ -238,10 +234,7 @@ class LTAPCarlaClient():
             print(self.exp_info)
             tta_values = self.generate_tta_values()
 
-            for i in range(self.n_routes):
-#                self.ego_actor.set_transform(self.ego_start_position.transform)
-#                self.ego_actor.set_velocity(carla.Vector3D(0,0,0))
-#                self.ego_actor.apply_control(self.empty_control)
+            for i in range(self.n_routes_per_session):
                 self.origin = np.array([0.0, 0.0])
                 self.active_intersection = np.array([1.0, 0.0])
 
@@ -251,8 +244,10 @@ class LTAPCarlaClient():
                 self.spawn_ego_car()
 
                 self.initialize_noise_sound()
+                # in the first session, we go through paths 1 to 4, in the second session, paths 5 to 8
+                path_number = (self.exp_info['session']-1)*self.n_routes_per_session + i + 1
                 # in the path input file, -1 is turn right, 1 is turn left, 0 is go straight
-                path = np.loadtxt('path_%i.txt' % (i+1))
+                path = np.loadtxt('path_%i.txt' % (path_number))
                 for j, current_turn in enumerate(path):
                     tta = tta_values[-1]
                     if (current_turn!=1):
@@ -278,36 +273,36 @@ class LTAPCarlaClient():
                             (j+1, current_turn, tta, bot_speed, bot_distance))
 
                     while not is_turn_completed:
+                        t = time.time()-trial_start_time
                         speed = np.sqrt(self.ego_actor.get_velocity().x**2 + self.ego_actor.get_velocity().y**2)
-                        acceleration = np.sqrt(self.ego_actor.get_acceleration().x**2 + self.ego_actor.get_acceleration().y**2)
+#                        acceleration = np.sqrt(self.ego_actor.get_acceleration().x**2 + self.ego_actor.get_acceleration().y**2)
                         ego_distance = self.ego_actor.get_location().distance(active_intersection_loc)
+                        '''
+                        'subj_id', 'session', 'route', 'intersection', 'turn_direction', 't',
+                        'distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition'
+                        '''
+                        values_to_log = [self.exp_info['subj_id'], self.exp_info['session'], i+1, j+1,
+                                      current_turn, 1000*t, ego_distance, tta, bot_distance, bot_speed]
+                        self.update_log(trial_log, values_to_log)
 
-#                        print(i, j, is_at_active_intersection, self.origin, self.active_intersection,
-#                              current_turn, '%.3f %.3f'% (ego_distance, speed))
+                        self.update_ego_control()
 
-                        self.update_log(trial_log, time.time()-trial_start_time, i+1, j+1, current_turn)
+                        if not self.bot_actor is None:
+                            self.update_bot_control(bot_speed)
+                        self.noise_sound.set_volume(0.05 + speed/20)
 
-                        self.update_control()
-                        self.ego_actor.apply_control(self.control)
-
-                        self.noise_sound.set_volume(0.1 + speed/30)
-#                        self.noise_sound.set_volume(0.2 + speed/20)
-
-                        if((not is_first_cue_played) & (self.ego_actor.get_location().
-                                        distance(active_intersection_loc)<(4/5)*self.block_size)):
+                        if((not is_first_cue_played) & (ego_distance<(4/5)*self.block_size)):
                             self.play_sound_cue(1, current_turn)
                             is_first_cue_played = True
-                        elif((not is_second_cue_played) & (self.ego_actor.get_location().
-                                        distance(active_intersection_loc)<(1/5)*self.block_size)):
+                        # When the driver approaches the intersection, we play the second sound cue and destroy the bot at the previous intersection
+                        elif((not is_second_cue_played) & (ego_distance<(1/5)*self.block_size)):
                             self.play_sound_cue(2, current_turn)
                             is_second_cue_played = True
-                        # When the driver enters the intersection, we destroy the bot
-                        elif((not is_at_active_intersection) & (self.ego_actor.get_location().
-                                                            distance(active_intersection_loc)<10)):
-                            is_at_active_intersection = True
                             if (not (self.bot_actor is None)):
                                 self.bot_actor.destroy()
                                 self.bot_actor = None
+                        elif((not is_at_active_intersection) & (ego_distance<10)):
+                            is_at_active_intersection = True
                         # if at the left turn, wait until almost a full stop before spawning a bot
                         elif((current_turn==1) & (is_at_active_intersection) & (speed<1) &
                                                                         (self.bot_actor is None)):
@@ -317,8 +312,7 @@ class LTAPCarlaClient():
                         elif((current_turn!=1) & (is_at_active_intersection) & (self.bot_actor is None)):
                             self.spawn_bot(75, bot_speed)
                         # When the driver leaves the intersection we designate the next intersection as active
-                        elif((is_at_active_intersection) & (self.ego_actor.get_location().
-                                                            distance(active_intersection_loc)>10)):
+                        elif((is_at_active_intersection) & (ego_distance>10)):
                             current_direction = self.active_intersection - self.origin
                             new_origin = self.active_intersection
                             new_active_intersection = (self.active_intersection +
