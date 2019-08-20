@@ -26,26 +26,29 @@ class LTAPCarlaClient():
     block_size = 150
     lane_width = 3.5
 
-    bot_blueprint_names = ['vehicle.tesla.model3', 'vehicle.nissan.micra', 'vehicle.volkswagen.t2',
-                           'vehicle.mini.cooperst', 'vehicle.citroen.c3', 'vehicle.tesla.model3',
-                           'vehicle.dodge_charger.police']
+    bot_colors = []
+
+#    bot_blueprint_names = ['vehicle.tesla.model3', 'vehicle.nissan.micra', 'vehicle.volkswagen.t2',
+#                           'vehicle.mini.cooperst', 'vehicle.citroen.c3']
+    bot_blueprint_names = ['vehicle.tesla.model3']
+
+    bot_blueprint_colors = ['147,130,127', '107,162,146', '53,206,141', '188,216,183', '224,210,195',
+                        '255,237,101', '180,173,234']
 
     def __init__(self):
         try:
             self.exp_info = self.get_exp_info()
-            self.n_routes = 1
+            self.n_routes = 2
 
+            self.set_ff_gain()
             self.initialize_log()
             self.client = carla.Client('localhost', 2000)
             self.client.set_timeout(2.0)
             pygame.init()
             self.world = self.client.get_world()
 
-            self.bot_speed_values = [10, 15, 20]
-
-            self.joystick = pygame.joystick.Joystick(0)
-            self.joystick.init()
-            print('Joystick ID: %d Init status: %s' % (self.joystick.get_id(), self.joystick.get_init()))
+#            self.bot_speed_values = [10, 15, 20]
+            self.bot_distance_values = [80, 120, 160]
 
             # x and y indices of the intersection
             # (0, 0) is the intersection in the bottom left corner of the map
@@ -61,23 +64,8 @@ class LTAPCarlaClient():
                                (2, 1): 'turn_left',
                                (2, 0): 'go_straight',
                                (2, -1): 'turn_right'}
-            '''
-            To shift the starting position from the center of the intersection to the lane where
-            the driver can start driving towards the first active intersection, we rotate the
-            heading direction 90` clockwise (-np.pi/2), and shift the origin towards that direction by half lane width
-            '''
-            start_position = self.origin*self.block_size + \
-                        self.rotate(self.active_intersection-self.origin, -np.pi/2)*self.lane_width/2
 
-            # whenever we send or get y-coordinated to carla, we should invert the y-coordinate
-            self.ego_start_position = self.world.get_map().get_waypoint(
-                carla.Location(x=start_position[0], y=-start_position[1], z=0))
-
-            ego_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.tesla.model3'))
-
-            self.ego_actor = self.world.spawn_actor(ego_bp, self.ego_start_position.transform)
-            self.ego_actor.set_autopilot(False)
-
+            self.ego_actor = None
             self.bot_actor = None
             self.bot_actor_blueprints = [random.choice(self.world.get_blueprint_library().filter(bp_name))
                                             for bp_name in self.bot_blueprint_names]
@@ -96,12 +84,18 @@ class LTAPCarlaClient():
             for actor in self.world.get_actors():
                 actor.destroy()
 
+    def set_ff_gain(self, gain=35):
+        ffset_cmd = 'ffset /dev/input/event%i -a %i'
+        for i in range(5,10):
+            os.system(ffset_cmd % (i, gain))
+
     def generate_tta_values(self):
-        tta_conditions = [4, 5, 6, 7]
+        tta_conditions = [3, 4.5, 6]
         tta_values = []
         for tta in tta_conditions:
-            tta_values = np.append(tta_values, np.ones(15)*tta)
+            tta_values = np.append(tta_values, np.ones(10)*tta)
         np.random.shuffle(tta_values)
+#        tta_values = np.ones(15)*4
 
         return tta_values
 
@@ -148,6 +142,11 @@ class LTAPCarlaClient():
         elif throttleCmd > 1:
             throttleCmd = 1
 
+        # cap the speed at 20 m/s
+        speed = np.sqrt(self.ego_actor.get_velocity().x**2 + self.ego_actor.get_velocity().y**2)
+        if speed > 20:
+            throttleCmd = 0
+
         brakeCmd = 1.6 + (2.05 * math.log10(
             -0.7 * self.joystick.get_axis(3) + 1.4) - 1.2) / 0.92
         if brakeCmd <= 0:
@@ -170,9 +169,25 @@ class LTAPCarlaClient():
         self.control.brake = brakeCmd
         self.control.reverse = reverse
 
+    def spawn_ego_car(self):
+        '''
+        To shift the starting position from the center of the intersection to the lane where
+        the driver can start driving towards the first active intersection, we rotate the
+        heading direction 90` clockwise (-np.pi/2), and shift the origin towards that direction by half lane width
+        '''
+        start_position = self.origin*self.block_size + \
+                        self.rotate(self.active_intersection-self.origin, -np.pi/2)*self.lane_width/2
+        self.ego_start_position = self.world.get_map().get_waypoint(
+            carla.Location(x=start_position[0], y=-start_position[1], z=0))
+
+        ego_bp = random.choice(self.world.get_blueprint_library().filter('vehicle.tesla.model3'))
+
+        self.ego_actor = self.world.spawn_actor(ego_bp, self.ego_start_position.transform)
+        self.ego_actor.set_autopilot(False)
 
     def spawn_bot(self, distance_to_intersection, speed):
         bot_bp = random.choice(self.bot_actor_blueprints)
+        bot_bp.set_attribute('color', random.choice(self.bot_blueprint_colors))
 
         ego_direction = self.active_intersection - self.origin
         spawn_location = self.active_intersection*self.block_size + \
@@ -194,7 +209,7 @@ class LTAPCarlaClient():
         sound.play()
 
     def initialize_noise_sound(self):
-        file_path = 'sounds/civic_noise.wav'
+        file_path = 'sounds/tesla_noise.wav'
         self.noise_sound = pygame.mixer.Sound(file_path)
         self.noise_sound.set_volume(0.1)
         self.noise_sound.play(loops=-1)
@@ -224,6 +239,17 @@ class LTAPCarlaClient():
             tta_values = self.generate_tta_values()
 
             for i in range(self.n_routes):
+#                self.ego_actor.set_transform(self.ego_start_position.transform)
+#                self.ego_actor.set_velocity(carla.Vector3D(0,0,0))
+#                self.ego_actor.apply_control(self.empty_control)
+                self.origin = np.array([0.0, 0.0])
+                self.active_intersection = np.array([1.0, 0.0])
+
+                self.joystick = pygame.joystick.Joystick(0)
+                self.joystick.init()
+
+                self.spawn_ego_car()
+
                 self.initialize_noise_sound()
                 # in the path input file, -1 is turn right, 1 is turn left, 0 is go straight
                 path = np.loadtxt('path_%i.txt' % (i+1))
@@ -232,9 +258,10 @@ class LTAPCarlaClient():
                     if (current_turn!=1):
                         tta_values = tta_values[:-1]
 
-                    bot_speed = random.choice(self.bot_speed_values)
+                    bot_distance = random.choice(self.bot_distance_values)
                     # distance to the center of the ego car
-                    bot_distance = tta*bot_speed
+#                    bot_distance = tta*bot_speed
+                    bot_speed = bot_distance/tta
 
                     is_turn_completed = False
                     is_at_active_intersection = False
@@ -247,7 +274,8 @@ class LTAPCarlaClient():
                     trial_log = []
                     trial_start_time = time.time()
 
-                    print(j+1, current_turn, tta, bot_speed, bot_distance, self.active_intersection)
+                    print ('Trial %i, turn %f, TTA %f, bot speed %f, distance %f' %
+                            (j+1, current_turn, tta, bot_speed, bot_distance))
 
                     while not is_turn_completed:
                         speed = np.sqrt(self.ego_actor.get_velocity().x**2 + self.ego_actor.get_velocity().y**2)
@@ -304,14 +332,17 @@ class LTAPCarlaClient():
 
                     self.write_log(trial_log)
 
-                self.ego_actor.apply_control(self.empty_control)
                 self.noise_sound.stop()
-                self.ego_actor.set_transform(self.ego_start_position.transform)
-                self.ego_actor.set_velocity(carla.Vector3D(0,0,0))
-                time.sleep(5.0)
 
-            for actor in self.world.get_actors():
-                actor.destroy()
+                if (not (self.ego_actor is None)):
+                    self.ego_actor.destroy()
+                    self.ego_actor = None
+                if (not (self.bot_actor is None)):
+                    self.bot_actor.destroy()
+                    self.bot_actor = None
+                self.joystick.quit()
+
+                time.sleep(5.0)
 
         except KeyboardInterrupt:
             for actor in self.world.get_actors():
