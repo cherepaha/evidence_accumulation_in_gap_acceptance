@@ -98,7 +98,7 @@ class LTAPCarlaClient():
         with open(self.log_file_path, 'w') as fp:
             writer = csv.writer(fp, delimiter = '\t')
             writer.writerow(['subj_id', 'session', 'route', 'intersection', 'turn_direction', 't',
-                             'distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition',
+                             'ego_distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition',
                              'ego_x', 'ego_y', 'ego_vx', 'ego_vy', 'ego_ax', 'ego_ay', 'ego_yaw',
                              'bot_x', 'bot_y', 'bot_vx', 'bot_vy', 'bot_ax', 'bot_ay', 'bot_yaw',
                              'throttle', 'brake', 'steer'])
@@ -247,7 +247,7 @@ class LTAPCarlaClient():
                 # in the first session, we go through paths 1 to 4, in the second session, paths 5 to 8
                 path_number = (self.exp_info['session']-1)*self.n_routes_per_session + i + 1
                 # in the path input file, -1 is turn right, 1 is turn left, 0 is go straight
-                path = np.loadtxt('path_%i.txt' % (path_number))
+                path = np.loadtxt(os.path.join('paths', 'path_%i.txt' % (path_number)))
                 for j, current_turn in enumerate(path):
                     tta = tta_values[-1]
                     if (current_turn!=1):
@@ -279,7 +279,7 @@ class LTAPCarlaClient():
                         ego_distance = self.ego_actor.get_location().distance(active_intersection_loc)
                         '''
                         'subj_id', 'session', 'route', 'intersection', 'turn_direction', 't',
-                        'distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition'
+                        'ego_distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition'
                         '''
                         values_to_log = [self.exp_info['subj_id'], self.exp_info['session'], i+1, j+1,
                                       current_turn, 1000*t, ego_distance, tta, bot_distance, bot_speed]
