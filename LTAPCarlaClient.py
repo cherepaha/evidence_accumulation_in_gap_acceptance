@@ -224,7 +224,7 @@ class LTAPCarlaClient():
         return list(['%.4f' % value for value in state])
 
     def update_log(self, log, values_to_log):
-        log.append((list(['%i' % value for value in values_to_log]) + \
+        log.append((list(['%.4f' % value for value in values_to_log]) + \
                     self.get_actor_state(self.ego_actor) + \
                     self.get_actor_state(self.bot_actor) + \
                     list(['%.4f' % value for value in [self.control.throttle, self.control.brake, self.control.steer]])))
@@ -298,9 +298,6 @@ class LTAPCarlaClient():
                         elif((not is_second_cue_played) & (ego_distance<(1/5)*self.block_size)):
                             self.play_sound_cue(2, current_turn)
                             is_second_cue_played = True
-                            if (not (self.bot_actor is None)):
-                                self.bot_actor.destroy()
-                                self.bot_actor = None
                         elif((not is_at_active_intersection) & (ego_distance<10)):
                             is_at_active_intersection = True
                         # if at the left turn, wait until almost a full stop before spawning a bot
@@ -308,10 +305,10 @@ class LTAPCarlaClient():
                                                                         (self.bot_actor is None)):
                             self.spawn_bot(distance_to_intersection=bot_distance-ego_distance,
                                            speed=bot_speed)
-                        # if not at the left turn, don't wait for slowdown when spawning a bot
-                        elif((current_turn!=1) & (is_at_active_intersection) & (self.bot_actor is None)):
+                        # if at the right turn, don't wait for slowdown when spawning a bot
+                        elif((current_turn==-1) & (is_at_active_intersection) & (self.bot_actor is None)):
                             self.spawn_bot(75, bot_speed)
-                        # When the driver leaves the intersection we designate the next intersection as active
+                        # When the driver leaves the intersection we designate the next intersection as active and destroy the bot
                         elif((is_at_active_intersection) & (ego_distance>10)):
                             current_direction = self.active_intersection - self.origin
                             new_origin = self.active_intersection
@@ -319,6 +316,10 @@ class LTAPCarlaClient():
                                             self.rotate(current_direction, np.pi/2*current_turn))
                             self.origin = new_origin
                             self.active_intersection = new_active_intersection
+
+                            if (not (self.bot_actor is None)):
+                                self.bot_actor.destroy()
+                                self.bot_actor = None
 
                             is_turn_completed = True
 
