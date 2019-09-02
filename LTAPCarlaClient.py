@@ -97,7 +97,8 @@ class LTAPCarlaClient():
                                                          self.exp_info['start_time'] + '.txt')
         with open(self.log_file_path, 'w') as fp:
             writer = csv.writer(fp, delimiter = '\t')
-            writer.writerow(['subj_id', 'session', 'route', 'intersection', 'turn_direction', 't',
+            writer.writerow(['subj_id', 'session', 'route', 'intersection_no', 
+                             'intersection_x', 'intersection_y','turn_direction', 't',
                              'ego_distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition',
                              'ego_x', 'ego_y', 'ego_vx', 'ego_vy', 'ego_ax', 'ego_ay', 'ego_yaw',
                              'bot_x', 'bot_y', 'bot_vx', 'bot_vy', 'bot_ax', 'bot_ay', 'bot_yaw',
@@ -253,36 +254,41 @@ class LTAPCarlaClient():
                     if (current_turn!=1):
                         tta_values = tta_values[:-1]
 
-                    bot_distance = random.choice(self.bot_distance_values)
+                    d_condition = random.choice(self.bot_distance_values)
                     # distance to the center of the ego car
 #                    bot_distance = tta*bot_speed
-                    bot_speed = bot_distance/tta
+                    bot_speed = d_condition/tta
 
                     is_turn_completed = False
                     is_at_active_intersection = False
                     is_first_cue_played = False
                     is_second_cue_played = False
+                    
+                    intersection_coordinates = (self.active_intersection[0]*self.block_size,
+                                                self.active_intersection[1]*self.block_size)
 
-                    active_intersection_loc = carla.Location(x=self.active_intersection[0]*self.block_size,
-                                                             y=-self.active_intersection[1]*self.block_size,
+                    # whenever we exchange y-coordinates with Carla server, we invert the sign
+                    active_intersection_loc = carla.Location(x=intersection_coordinates[0],
+                                                             y=-intersection_coordinates[1],
                                                              z=0.0)
                     trial_log = []
                     trial_start_time = time.time()
 
                     print ('Trial %i, turn %f, TTA %f, bot speed %f, distance %f' %
-                            (j+1, current_turn, tta, bot_speed, bot_distance))
+                            (j+1, current_turn, tta, bot_speed, d_condition))
 
                     while not is_turn_completed:
                         t = time.time()-trial_start_time
                         speed = np.sqrt(self.ego_actor.get_velocity().x**2 + self.ego_actor.get_velocity().y**2)
-#                        acceleration = np.sqrt(self.ego_actor.get_acceleration().x**2 + self.ego_actor.get_acceleration().y**2)
-                        ego_distance = self.ego_actor.get_location().distance(active_intersection_loc)
+                        ego_distance_to_intersection = self.ego_actor.get_location().distance(active_intersection_loc)
                         '''
-                        'subj_id', 'session', 'route', 'intersection', 'turn_direction', 't',
+                        'subj_id', 'session', 'route', 'intersection_no', 
+                        'intersection_x', 'intersection_y', 'turn_direction', 't', 
                         'ego_distance_to_intersection', 'tta_condition', 'd_condition', 'v_condition'
                         '''
                         values_to_log = [self.exp_info['subj_id'], self.exp_info['session'], i+1, j+1,
-                                      current_turn, 1000*t, ego_distance, tta, bot_distance, bot_speed]
+                                         intersection_coordinates[0], intersection_coordinates[1],
+                                         current_turn, 1000*t, ego_distance_to_intersection, tta, d_condition, bot_speed]
                         self.update_log(trial_log, values_to_log)
 
                         self.update_ego_control()
@@ -291,25 +297,25 @@ class LTAPCarlaClient():
                             self.update_bot_control(bot_speed)
                         self.noise_sound.set_volume(0.05 + speed/20)
 
-                        if((not is_first_cue_played) & (ego_distance<(4/5)*self.block_size)):
+                        if((not is_first_cue_played) & (ego_distance_to_intersection<(4/5)*self.block_size)):
                             self.play_sound_cue(1, current_turn)
                             is_first_cue_played = True
                         # When the driver approaches the intersection, we play the second sound cue and destroy the bot at the previous intersection
-                        elif((not is_second_cue_played) & (ego_distance<(1/5)*self.block_size)):
+                        elif((not is_second_cue_played) & (ego_distance_to_intersection<(1/5)*self.block_size)):
                             self.play_sound_cue(2, current_turn)
                             is_second_cue_played = True
-                        elif((not is_at_active_intersection) & (ego_distance<10)):
+                        elif((not is_at_active_intersection) & (ego_distance_to_intersection<10)):
                             is_at_active_intersection = True
                         # if at the left turn, wait until almost a full stop before spawning a bot
                         elif((current_turn==1) & (is_at_active_intersection) & (speed<1) &
                                                                         (self.bot_actor is None)):
-                            self.spawn_bot(distance_to_intersection=bot_distance-ego_distance,
+                            self.spawn_bot(distance_to_intersection=d_condition-ego_distance_to_intersection,
                                            speed=bot_speed)
                         # if at the right turn, don't wait for slowdown when spawning a bot
                         elif((current_turn==-1) & (is_at_active_intersection) & (self.bot_actor is None)):
                             self.spawn_bot(75, bot_speed)
                         # When the driver leaves the intersection we designate the next intersection as active and destroy the bot
-                        elif((is_at_active_intersection) & (ego_distance>10)):
+                        elif((is_at_active_intersection) & (ego_distance_to_intersection>10)):
                             current_direction = self.active_intersection - self.origin
                             new_origin = self.active_intersection
                             new_active_intersection = (self.active_intersection +
