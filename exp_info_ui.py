@@ -23,6 +23,22 @@ class ExpInfoUI(tkr.Frame):
 
         self.generate_button = tkr.Button(self, text='Generate', command=self.generate)
         self.generate_button.pack()
+        
+        tkr.Label(self, text='Session').pack()
+        self.session_var = tkr.IntVar(value=1)
+        session_radios = [tkr.Radiobutton(self, text=str(session), padx=20, 
+                                               variable=self.session_var, value=session) 
+                                for session in [1, 2]]
+        for session_radio in session_radios:
+            session_radio.pack(anchor=tkr.W)
+
+        tkr.Label(self, text='Route').pack()
+        self.route_var = tkr.IntVar(value=1)
+        route_radios = [tkr.Radiobutton(self, text=str(route), padx=20, 
+                                               variable=self.route_var, value=route) 
+                                for route in [1, 2, 3, 4]]
+        for route_radio in route_radios:
+            route_radio.pack(anchor=tkr.W)
 
         self.start_button = tkr.Button(self, text='Start experiment', command=self.proceed)
         self.start_button.pack()
@@ -35,8 +51,6 @@ class ExpInfoUI(tkr.Frame):
         self.subj_id_entry.delete(0, tkr.END)
         self.subj_id_entry.insert(0, subj_id)
 
-        self.session = 1
-
         self.start_button.bind('<Button-1>', self.write_id)
 
     def write_id(self, event):
@@ -46,6 +60,8 @@ class ExpInfoUI(tkr.Frame):
 
     def proceed(self):
         self.exp_info = {'subj_id': int(self.subj_id_entry.get()),
-                         'session': self.session,
+                         'session': self.session_var.get(),
+                         'route': self.route_var.get(),
                          'start_time': datetime.strftime(datetime.now(), '%Y_%m_%d_%H_%M')}
+        print(self.exp_info)
         self.quit()

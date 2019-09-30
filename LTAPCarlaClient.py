@@ -10,11 +10,11 @@ try:
             sys.version_info.major,
             sys.version_info.minor,
             'win-amd64' if os.name == 'nt' else 'linux-x86_64')))[0])
-except IndexError:
+    import carla
+    import pygame
+except BaseException:
     pass
 
-import carla
-import pygame
 import math
 import time
 import random
@@ -38,7 +38,7 @@ class LTAPCarlaClient():
     def __init__(self):
         try:
             self.exp_info = self.get_exp_info()
-            self.n_routes_per_session = 2
+            self.n_routes_per_session = 4
 
             self.set_ff_gain()
             self.initialize_log()
@@ -47,7 +47,8 @@ class LTAPCarlaClient():
             pygame.init()
             self.world = self.client.get_world()
 
-            self.bot_distance_values = [80, 120, 160]
+            self.tta_conditions = [3.5, 4.5, 5.5]
+            self.bot_distance_values = [90, 120, 150]
 
             # x and y indices of the intersection
             # (0, 0) is the intersection in the bottom left corner of the map
@@ -82,9 +83,8 @@ class LTAPCarlaClient():
             os.system(ffset_cmd % (i, gain))
 
     def generate_tta_values(self):
-        tta_conditions = [3, 4.5, 6]
         tta_values = []
-        for tta in tta_conditions:
+        for tta in self.tta_conditions:
             tta_values = np.append(tta_values, np.ones(10)*tta)
         np.random.shuffle(tta_values)
 
@@ -234,8 +234,9 @@ class LTAPCarlaClient():
         try:
             print(self.exp_info)
             tta_values = self.generate_tta_values()
+            first_route = self.exp_info['route']
 
-            for i in range(self.n_routes_per_session):
+            for i in range(first_route, self.n_routes_per_session+1):
                 self.origin = np.array([0.0, 0.0])
                 self.active_intersection = np.array([1.0, 0.0])
 
@@ -245,18 +246,17 @@ class LTAPCarlaClient():
                 self.spawn_ego_car()
 
                 self.initialize_noise_sound()
-                # in the first session, we go through paths 1 to 4, in the second session, paths 5 to 8
-                path_number = (self.exp_info['session']-1)*self.n_routes_per_session + i + 1
+                # in the first session, we go through routes 1 to 4, in the second session, routes 5 to 8
+                route_number = (self.exp_info['session']-1)*self.n_routes_per_session + i 
                 # in the path input file, -1 is turn right, 1 is turn left, 0 is go straight
-                path = np.loadtxt(os.path.join('paths', 'path_%i.txt' % (path_number)))
-                for j, current_turn in enumerate(path):
+                route = np.loadtxt(os.path.join('paths', 'path_%i.txt' % (route_number)))
+                for j, current_turn in enumerate(route):
                     tta = tta_values[-1]
                     if (current_turn!=1):
                         tta_values = tta_values[:-1]
 
-                    d_condition = random.choice(self.bot_distance_values)
                     # distance to the center of the ego car
-#                    bot_distance = tta*bot_speed
+                    d_condition = random.choice(self.bot_distance_values)
                     bot_speed = d_condition/tta
 
                     is_turn_completed = False
