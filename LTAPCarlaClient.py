@@ -182,10 +182,19 @@ class LTAPCarlaClient():
         self.ego_actor.set_autopilot(False)
 
     def spawn_bot(self, distance_to_intersection, speed):
+        print('bot spawn start')
+        print('self.active_intersection')
+        print(self.active_intersection)
+        print('self.origin')
+        print (self.origin)
+
         bot_bp = random.choice(self.bot_actor_blueprints)
         bot_bp.set_attribute('color', random.choice(self.bot_blueprint_colors))
 
         ego_direction = self.active_intersection - self.origin
+
+        print('ego_direction')
+        print(ego_direction)
         spawn_location = self.active_intersection*self.block_size + \
                             distance_to_intersection*(ego_direction) + \
                             (self.lane_width/2) * self.rotate(ego_direction, np.pi/2)
@@ -194,7 +203,16 @@ class LTAPCarlaClient():
 
         self.bot_actor = self.world.spawn_actor(bot_bp, spawn_waypoint.transform)
 
+        print('speed')
+        print(speed)
+        print('self.rotate(ego_direction, np.pi)')
+        print(self.rotate(ego_direction, np.pi))
+        print('self.rotate(ego_direction, np.pi).astype(int)')
+        print(self.rotate(ego_direction, np.pi).astype(int))
+
         self.bot_velocity = speed*self.rotate(ego_direction, np.pi).astype(int)
+        print('self.bot_velocity')
+        print(self.bot_velocity)
         self.bot_actor.set_velocity(carla.Vector3D(self.bot_velocity[0], -self.bot_velocity[1], 0))
 
     def update_bot_control(self, max_speed):
@@ -299,6 +317,7 @@ class LTAPCarlaClient():
 
                         if not self.bot_actor is None:
                             self.update_bot_control(bot_speed)
+
                         self.noise_sound.set_volume(0.05 + speed/20)
 
                         if((not is_first_cue_played) & (ego_distance_to_intersection<(4/5)*self.block_size)):
@@ -320,10 +339,14 @@ class LTAPCarlaClient():
                             self.spawn_bot(75, bot_speed)
                         # When the driver leaves the intersection we designate the next intersection as active and destroy the bot
                         elif((is_at_active_intersection) & (ego_distance_to_intersection>10)):
+                            print('updating origin and active intersection')
                             current_direction = self.active_intersection - self.origin
+                            print(current_direction)
                             new_origin = self.active_intersection
+                            print(new_origin)
                             new_active_intersection = (self.active_intersection +
                                             self.rotate(current_direction, np.pi/2*current_turn))
+                            print(new_active_intersection)
                             self.origin = new_origin
                             self.active_intersection = new_active_intersection
 
