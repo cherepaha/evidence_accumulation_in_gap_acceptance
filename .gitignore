@@ -105,3 +105,4 @@ venv.bak/
 
 /figures
 *.png
+raw_data_merged.txt
