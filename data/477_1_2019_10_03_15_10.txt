@@ -1,0 +1,1 @@
+subj_id	session	route	intersection_no	intersection_x	intersection_y	turn_direction	t	ego_distance_to_intersection	tta_condition	d_condition	v_condition	ego_x	ego_y	ego_vx	ego_vy	ego_ax	ego_ay	ego_yaw	bot_x	bot_y	bot_vx	bot_vy	bot_ax	bot_ay	bot_yaw	throttle	brake	steer
