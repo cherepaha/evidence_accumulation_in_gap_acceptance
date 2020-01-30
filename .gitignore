@@ -106,3 +106,4 @@ venv.bak/
 /figures
 *.png
 raw_data_merged.txt
+processed_data.csv
