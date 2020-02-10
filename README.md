@@ -1,2 +1,2 @@
-# LTAP_decisions
-Code for the driving simulator experiment and data analysis
+# Evidence accumulation in gap acceptance
+Code for the driving simulator experiment, data analysis, and modeling
