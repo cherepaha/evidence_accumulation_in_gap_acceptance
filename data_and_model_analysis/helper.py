@@ -2,7 +2,9 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import ddm
 import os
+import csv
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
@@ -119,3 +121,20 @@ class Helper:
              5*(x[4:-2] - x[2:-4])/((t[4:-2]-t[2:-4])/2))/32
         
         return v
+    
+    def write_to_csv(directory, filename, array):
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        with open(os.path.join(directory, filename), 'a', newline='') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',')
+            writer.writerow(array)
+            
+    def fit_model(model, exp_data, subj_id, condition, lossfunction, fitting_method='differential_evolution'):
+        print(subj_id)
+        print(condition)
+        training_data = exp_data[(exp_data.subj_id == subj_id)
+                                 & ~((exp_data.d_condition==condition['d']) & (exp_data.tta_condition==condition['tta']))]
+        training_sample = ddm.Sample.from_pandas_dataframe(df=training_data, 
+                                                           rt_column_name='RT', correct_column_name='is_turn_decision')
+        return(ddm.fit_adjust_model(sample=training_sample, model=model, lossfunction=lossfunction, suppress_output=True, 
+                                    fitting_method=fitting_method))
