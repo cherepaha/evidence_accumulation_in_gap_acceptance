@@ -130,14 +130,7 @@ def write_to_csv(directory, filename, array):
         writer = csv.writer(csvfile, delimiter=',')
         writer.writerow(array)
        
-def fit_model(subj_id, condition, model, exp_data, loss_function):
-    print(subj_id)
-    print(condition)
-    if not (subj_id=='all'):
-        training_data = exp_data[(exp_data.subj_id == subj_id)]
-    if not (condition=='all'):
-        training_data = training_data[~((training_data.d_condition==condition['d']) 
-                                        & (training_data.tta_condition==condition['tta']))]
+def fit_model(model, training_data, loss_function):
     training_sample = ddm.Sample.from_pandas_dataframe(df=training_data, 
                                                        rt_column_name='RT', 
                                                        correct_column_name='is_turn_decision')
