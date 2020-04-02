@@ -55,7 +55,7 @@ def fit_model_by_condition(subj_idx, cross_validation_operator):
         print(condition)        
             
         f = lambda x,y: (~x & ~y) if cross_validation_operator=='and' else (~x | ~y)
-        include_in_training_set = f(exp_data.d_condition==condition['tta'], exp_data.tta_condition==condition['d'])
+        include_in_training_set = f(exp_data.tta_condition==condition['tta'], exp_data.d_condition==condition['d'])
        
         training_data = exp_data[(exp_data.subj_id == subj_id) & include_in_training_set]
         print(len(training_data))
