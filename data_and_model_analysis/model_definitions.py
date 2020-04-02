@@ -1,14 +1,11 @@
 import numpy as np
 from scipy import interpolate, optimize
-import pandas as pd
 import ddm
 
 class LossWLS(ddm.LossFunction):
     name = 'Weighted least squares as described in Ratcliff & Tuerlinckx 2002'
     rt_quantiles = [0.1, 0.3, 0.5, 0.7, 0.9]
     rt_q_weights = [2, 2, 1, 1, 0.5]
-#     exp_data = pd.read_csv('../data/measures.csv', 
-#                             usecols=['subj_id', 'RT', 'is_turn_decision', 'tta_condition', 'd_condition'])
            
     def setup(self, dt, T_dur, **kwargs):
         self.dt = dt
@@ -33,28 +30,25 @@ class LossWLS(ddm.LossFunction):
             WLS += 4*(solultions[c].prob_correct() - comb_sample.prob_correct())**2            
             # Sometimes model p_correct is very close to 0, then RT distribution is weird, in this case ignore RT error 
             if ((solultions[c].prob_correct()>0.001) & (comb_sample.prob_correct()>0)):
-#                 self.condition_data = self.exp_data[(self.exp_data.d_condition==comb['d_condition']) 
-#                                                     & (self.exp_data.tta_condition==comb['tta_condition'])]
-#                 self.condition_data = list(comb_sample.items(correct=True))
                 model_rt_q = self.get_rt_quantiles(solultions[c], model.t_domain(), exp=False)
                 exp_rt_q = self.get_rt_quantiles(comb_sample, model.t_domain(), exp=True)
                 WLS += np.dot((model_rt_q-exp_rt_q)**2, self.rt_q_weights)*comb_sample.prob_correct()
         return WLS
 
 class ModelTtaBounds:   
-    param_names = ['alpha', 'tta_crit', 'beta', 'd_crit', 'noise', 'b_0', 'k', 'tta_crit', 'nondectime', 'halfwidth']
     T_dur = 2.5
+    param_names = ['alpha', 'beta', 'theta', 'noise', 'b_0', 'k', 'tta_crit', 'nondectime', 'halfwidth']
     
     class DriftTtaDistance(ddm.models.Drift):
         name = 'Drift depends on TTA and distance'
-        required_parameters = ['alpha', 'tta_crit', 'beta', 'd_crit']
+        required_parameters = ['alpha', 'beta', 'theta']
         required_conditions = ['tta_condition', 'd_condition'] 
         
         def get_drift(self, t, conditions, **kwargs):
             v = conditions['d_condition']/conditions['tta_condition']
-            return (self.alpha*(conditions['tta_condition'] - t - self.tta_crit + 
-                                self.beta*(conditions['d_condition'] - v*t - self.d_crit)))
-    
+            return (self.alpha*(conditions['tta_condition'] - t 
+                                + self.beta*(conditions['d_condition'] - v*t) - self.theta))
+
     class BoundCollapsingTta(ddm.models.Bound):
         name = 'Bounds collapsing with TTA'
         required_parameters = ['b_0', 'k', 'tta_crit']
@@ -64,16 +58,14 @@ class ModelTtaBounds:
             return self.b_0/(1+np.exp(-self.k*(tau-self.tta_crit)))
     
     def __init__(self):
-        tta_crit = ddm.Fittable(minval=3, maxval=6)
         self.model = ddm.Model(name='5 TTA- and d-dependent drift and bounds and uniformly distributed nondecision time',
-                                     drift=self.DriftTtaDistance(alpha=ddm.Fittable(minval=0.1, maxval=3),
-                                                             tta_crit=tta_crit,
+                                 drift=self.DriftTtaDistance(alpha=ddm.Fittable(minval=0.1, maxval=3),
                                                              beta=ddm.Fittable(minval=0, maxval=1),
-                                                             d_crit=ddm.Fittable(minval=90, maxval=150)),
-                                     noise=ddm.NoiseConstant(noise=1),
-                                     bound=self.BoundCollapsingTta(b_0=ddm.Fittable(minval=0.5, maxval=5), 
-                                                              k=ddm.Fittable(minval=0.1, maxval=2),
-                                                              tta_crit=tta_crit),
-                                     overlay=ddm.OverlayNonDecisionUniform(nondectime=ddm.Fittable(minval=0, maxval=0.5),
-                                                                           halfwidth=ddm.Fittable(minval=0, maxval=0.3)),
-                                     T_dur=self.T_dur)
+                                                             theta=ddm.Fittable(minval=4, maxval=40)),
+                                 noise=ddm.NoiseConstant(noise=1),
+                                 bound=self.BoundCollapsingTta(b_0=ddm.Fittable(minval=0.5, maxval=5), 
+                                                               k=ddm.Fittable(minval=0.1, maxval=2),
+                                                               tta_crit=ddm.Fittable(minval=3, maxval=6)),
+                                 overlay=ddm.OverlayNonDecisionUniform(nondectime=ddm.Fittable(minval=0, maxval=0.5),
+                                                                       halfwidth=ddm.Fittable(minval=0, maxval=0.3)),
+                                 T_dur=self.T_dur)
