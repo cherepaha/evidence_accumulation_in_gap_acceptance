@@ -8,7 +8,22 @@ import csv
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
-from model_definitions import LossWLS, ModelTtaBounds
+def merge_csv(directory):
+    fout = open(directory+'_merged.csv','w+')
+    header_written = False
+    for i, file_name in enumerate(os.listdir(directory)):
+        file_path = os.path.join(directory, file_name)
+        if file_path.endswith('.csv'):
+            f = open(file_path)
+            if header_written:
+                # skip the header for the first row
+                next(f) 
+            for line in f:
+                fout.write(line)
+            f.close()
+            header_written = True
+            print(file_path)
+    fout.close()
 
 def plot_var_by_subject(data, fit_results_path, var, ylabel):
     model_measures = pd.read_csv(os.path.join(fit_results_path, 'measures.csv'))

@@ -1,5 +1,5 @@
 import numpy as np
-from scipy import interpolate, optimize
+from scipy import interpolate, optimize, stats
 import ddm
 
 class LossWLS(ddm.LossFunction):
@@ -56,8 +56,34 @@ class ModelTtaBounds:
         def get_bound(self, t, conditions, **kwargs):
             tau = conditions['tta_condition'] - t
             return self.b_0/(1+np.exp(-self.k*(tau-self.tta_crit)))
+
+    class OverlayNonDecisionGaussian(ddm.Overlay):
+        name = 'Add a Gaussian-distributed non-decision time'
+        required_parameters = ['nondectime', 'ndsigma']
+        def apply(self, solution):
+            # Make sure params are within range
+            assert self.ndsigma > 0, 'Invalid st parameter'
+            # Extract components of the solution object for convenience
+            corr = solution.corr
+            err = solution.err
+            dt = solution.model.dt
+            # Create the weights for different timepoints
+            times = np.asarray(list(range(-len(corr), len(corr))))*dt
+            weights = stats.norm(scale=self.ndsigma, loc=self.nondectime).pdf(times)
+            if np.sum(weights) > 0:
+                weights /= np.sum(weights) # Ensure it integrates to 1
+            newcorr = np.convolve(weights, corr, mode='full')[len(corr):(2*len(corr))]
+            newerr = np.convolve(weights, err, mode='full')[len(corr):(2*len(corr))]
+            return ddm.Solution(newcorr, newerr, solution.model,
+                            solution.conditions, solution.undec)
     
-    def __init__(self):
+    def __init__(self, ndt='uniform'):
+        overlay = (ddm.OverlayNonDecisionUniform(nondectime=ddm.Fittable(minval=0, maxval=0.5),
+                                                halfwidth=ddm.Fittable(minval=0, maxval=0.3)) 
+                    if ndt=='uniform' else 
+                   self.OverlayNonDecisionGaussian(nondectime=ddm.Fittable(minval=0, maxval=.5),
+                                                   ndsigma=ddm.Fittable(minval=0, maxval=.3)))
+                                                
         self.model = ddm.Model(name='5 TTA- and d-dependent drift and bounds and uniformly distributed nondecision time',
                                  drift=self.DriftTtaDistance(alpha=ddm.Fittable(minval=0.1, maxval=3),
                                                              beta=ddm.Fittable(minval=0, maxval=1),
@@ -66,6 +92,5 @@ class ModelTtaBounds:
                                  bound=self.BoundCollapsingTta(b_0=ddm.Fittable(minval=0.5, maxval=5), 
                                                                k=ddm.Fittable(minval=0.1, maxval=2),
                                                                tta_crit=ddm.Fittable(minval=3, maxval=6)),
-                                 overlay=ddm.OverlayNonDecisionUniform(nondectime=ddm.Fittable(minval=0, maxval=0.5),
-                                                                       halfwidth=ddm.Fittable(minval=0, maxval=0.3)),
+                                 overlay=overlay,
                                  T_dur=self.T_dur)
