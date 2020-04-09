@@ -37,7 +37,7 @@ class LossWLS(ddm.LossFunction):
 
 class ModelTtaBounds:   
     T_dur = 2.5
-    param_names = ['alpha', 'beta', 'theta', 'noise', 'b_0', 'k', 'tta_crit', 'nondectime', 'halfwidth']
+    param_names = ['alpha', 'beta', 'theta', 'noise', 'b_0', 'k', 'tta_crit', 'ndt_location', 'ndt_scale']
     
     class DriftTtaDistance(ddm.models.Drift):
         name = 'Drift depends on TTA and distance'
@@ -77,12 +77,12 @@ class ModelTtaBounds:
             return ddm.Solution(newcorr, newerr, solution.model,
                             solution.conditions, solution.undec)
     
-    def __init__(self, ndt='uniform'):
+    def __init__(self, ndt='gaussian'):
         overlay = (ddm.OverlayNonDecisionUniform(nondectime=ddm.Fittable(minval=0, maxval=0.5),
                                                 halfwidth=ddm.Fittable(minval=0, maxval=0.3)) 
                     if ndt=='uniform' else 
-                   self.OverlayNonDecisionGaussian(nondectime=ddm.Fittable(minval=0, maxval=.6),
-                                                   ndsigma=ddm.Fittable(minval=0, maxval=.3)))
+                   self.OverlayNonDecisionGaussian(nondectime=ddm.Fittable(minval=0, maxval=0.6),
+                                                   ndsigma=ddm.Fittable(minval=0, maxval=0.3)))
                                                 
         self.model = ddm.Model(name='5 TTA- and d-dependent drift and bounds and uniformly distributed nondecision time',
                                  drift=self.DriftTtaDistance(alpha=ddm.Fittable(minval=0.1, maxval=3),

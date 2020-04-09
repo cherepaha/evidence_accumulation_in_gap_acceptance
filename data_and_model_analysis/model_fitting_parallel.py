@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import helper
 
-def fit_model_by_subject(subj_idx, ndt='uniform', n=5): 
+def fit_model_by_subject(subj_idx, ndt='gaussian', n=5): 
     modelTtaBounds = ModelTtaBounds(ndt=ndt)
     exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision', 
                                                         'tta_condition', 'd_condition'])
@@ -16,7 +16,7 @@ def fit_model_by_subject(subj_idx, ndt='uniform', n=5):
     print(subj_id)
     print(condition)
     
-    directory = '../model_fit_results/%s/' % (ndt)
+    directory = '../model_fit_results/%s_ndt/' % (ndt)
     file_name = 'model_%s_params_subj_%i.csv' % (modelTtaBounds.model.name[0], subj_id)
     helper.write_to_csv(directory, file_name, ['subj_id', 'i', 'loss'] + modelTtaBounds.param_names)
     
@@ -32,13 +32,13 @@ def fit_model_by_subject(subj_idx, ndt='uniform', n=5):
                             + fitted_model.get_model_parameters())
 
 
-def fit_model_by_condition(subj_idx, cross_validation_operator): 
+def fit_model_by_condition(subj_idx, cross_validation_operator, ndt='gaussian'): 
     '''
     cross_validation_operator defines which conditions will be included in the training set.
     For `and`, training data for each condition (TTA, d) will be the decisions where both TTA and d
     are different from those of the current condition. For `or`, all other conditions will be included.
     '''
-    modelTtaBounds = ModelTtaBounds()
+    modelTtaBounds = ModelTtaBounds(ndt=ndt)
     exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision', 
                                                         'tta_condition', 'd_condition'])
     subjects = exp_data.subj_id.unique()
@@ -48,8 +48,8 @@ def fit_model_by_condition(subj_idx, cross_validation_operator):
         
     subj_id = subjects[subj_idx]
     
-    directory = '../model_fit_results/cross_validation/'
-    file_name = 'model_%s_cv_%s_subj_%i.csv' % (modelTtaBounds.model.name[0], cross_validation_operator, subj_id)
+    directory = '../model_fit_results/%s_ndt/cross_validation_%s/' % (ndt, cross_validation_operator)
+    file_name = 'subj_%i.csv' % (subj_id)
     helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'loss'] + modelTtaBounds.param_names)
     
     for condition in conditions:
