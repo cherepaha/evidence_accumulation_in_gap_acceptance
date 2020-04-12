@@ -79,10 +79,10 @@ class ModelTtaBounds:
     
     def __init__(self, ndt='gaussian'):
         overlay = (ddm.OverlayNonDecisionUniform(nondectime=ddm.Fittable(minval=0, maxval=0.5),
-                                                halfwidth=ddm.Fittable(minval=0, maxval=0.3)) 
+                                                halfwidth=ddm.Fittable(minval=0.001, maxval=0.3)) 
                     if ndt=='uniform' else 
                    self.OverlayNonDecisionGaussian(nondectime=ddm.Fittable(minval=0, maxval=0.6),
-                                                   ndsigma=ddm.Fittable(minval=0, maxval=0.3)))
+                                                   ndsigma=ddm.Fittable(minval=0.001, maxval=0.3)))
                                                 
         self.model = ddm.Model(name='5 TTA- and d-dependent drift and bounds and uniformly distributed nondecision time',
                                  drift=self.DriftTtaDistance(alpha=ddm.Fittable(minval=0.1, maxval=3),
