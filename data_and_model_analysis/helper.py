@@ -79,6 +79,61 @@ def plot_var_by_subject(data, fit_results_path, var, ylabel):
 
     return fig, axes
 
+def plot_var_by_subject_v2(data, model_measures_path, var, ylabel):
+    model_measures = pd.read_csv(os.path.join(model_measures_path))
+    d_conditions = np.sort(data.d_condition.unique())
+    subjects = data.subj_id.unique()
+    
+    fig, axes = plt.subplots(2, 4, figsize=(12,6), sharex=True, sharey=True)
+#    ax = axes[0][0]
+#    ax.set_title('all subjects', fontsize=16)
+#    sns.pointplot(ax=axes[0][0], data=data, 
+#                      x='tta_condition', y=var, hue='d_condition', join=False, dodge=0.05,
+#                      markers=['o', 's', '^'], hue_order=d_conditions, scale=0.8, errwidth=2)
+#
+#    for d_condition, marker in zip(d_conditions, ['o', 's', '^']):
+#        ax.plot([0, 1, 2], model_measures.loc[model_measures.d_condition==d_condition, var], zorder=0.1)
+#
+#    ax.legend().remove()
+#    ax.set_xlabel('')
+#    ax.set_ylabel('')
+
+    for subj_id, ax in zip(subjects, axes.flatten()[:-1]):
+        ax.set_title(subj_id, fontsize=16)
+        if not ((subj_id == 616) & (var=='RT')):
+            sns.pointplot(ax=ax, data=data[data.subj_id==subj_id], 
+                      x='tta_condition', y=var, hue='d_condition', join=False, dodge=0.05,
+                      markers=['o', 's', '^'], scale=1, errwidth=2)
+        else:
+            sns.pointplot(ax=ax, data=data[data.subj_id==subj_id], 
+                      x='tta_condition', y=var, hue='d_condition', join=False, dodge=0.05,
+                      markers=['s', '^'], palette=['C1', 'C2'], scale=1, errwidth=2)
+
+#        subj_fit_results_path = os.path.join(fit_results_path, str(subj_id))
+#        subj_model_measures = pd.read_csv(os.path.join(subj_fit_results_path, 'measures.csv'))
+        for d_condition, marker in zip(d_conditions, ['o', 's', '^']):
+            ax.plot([0, 1, 2], model_measures.loc[(model_measures.subj_id==subj_id) & 
+                                                  (model_measures.d_condition==d_condition), var], 
+                    zorder=0.1)
+
+        ax.legend().remove()
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+    plt.tight_layout()
+    sns.despine(offset=5, trim=True)
+
+    legend_elements = [Line2D([0], [0], color='C0', marker='o', lw=0, label='Data, d=90m'),
+                       Line2D([0], [0], color='C1', marker='s', lw=0, label='Data, d=120m'),
+                       Line2D([0], [0], color='C2', marker='^', lw=0, label='Data, d=150m'),
+                       Line2D([0], [0], color='grey', label='Model fits')]
+
+    fig.legend(handles=legend_elements, loc='center', bbox_to_anchor=(1.15, 0.55), fontsize=16, frameon=False)
+
+    fig.text(0.4, -0.05, 'time-to-arrival (TTA), s', fontsize=18)
+    fig.text(-0.03, 0.3, ylabel, fontsize=18, rotation=90)
+
+    return fig, axes
+
 def plot_rt_pdfs(exp_data, model_rts):
     fig, axes = plt.subplots(3, 3, figsize=(10,8), sharex=True, sharey=True)
     conditions = [(d, tta) 
