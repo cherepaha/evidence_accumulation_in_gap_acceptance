@@ -80,7 +80,7 @@ def plot_var_by_subject(data, fit_results_path, var, ylabel):
     return fig, axes
 
 def plot_var_by_subject_v2(data, model_measures_path, var, ylabel):
-    model_measures = pd.read_csv(os.path.join(model_measures_path))
+    model_measures = pd.read_csv(model_measures_path)
     d_conditions = np.sort(data.d_condition.unique())
     subjects = data.subj_id.unique()
     
