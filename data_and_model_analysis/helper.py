@@ -167,7 +167,7 @@ def plot_rt_pdfs(exp_data, model_rts):
                        Line2D([0], [0], color='grey', lw=2, label='Model')]
 
 
-    fig.legend(handles=legend_elements, loc='center', bbox_to_anchor=(.98, 0.5), fontsize=16, frameon=False)
+#     fig.legend(handles=legend_elements, loc='center', bbox_to_anchor=(.98, 0.5), fontsize=16, frameon=False)
     fig.text(0.5, 0.04, 'RT', fontsize=24)
     fig.text(0.04, 0.5, 'pdf', fontsize=24, rotation=90)
     
