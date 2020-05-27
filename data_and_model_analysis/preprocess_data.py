@@ -89,7 +89,7 @@ def get_data(data_file='raw_data_merged.txt'):
 
 data_path='../data'
 
-merge_txt_files(data_path)
+#merge_txt_files(data_path)
 data, measures = get_data(os.path.join(data_path, 'raw_data_merged.txt'))
 
 # is_turn_decision is calculated based on the minimum distance ever observed between ego and bot during the interaction.

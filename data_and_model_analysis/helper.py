@@ -134,39 +134,37 @@ def plot_var_by_subject_v2(data, model_measures_path, var, ylabel):
 
     return fig, axes
 
-def plot_rt_pdfs(exp_data, model_rts):
+def plot_rt_pdfs(exp_data, model_rts, cumulative=False):
     fig, axes = plt.subplots(3, 3, figsize=(10,8), sharex=True, sharey=True)
-    conditions = [(d, tta) 
+    conditions = [{'d': d, 'TTA': TTA}
                   for d in sorted(exp_data.d_condition.unique()) 
-                  for tta in sorted(exp_data.tta_condition.unique())]
+                  for TTA in sorted(exp_data.tta_condition.unique())]
     for (ax, condition) in zip(axes.flatten(), conditions):            
+        if condition['d'] == 90:
+            ax.text(0.5, 0.99, 'TTA=%is' % condition['TTA'], fontsize=18, transform=ax.transAxes, 
+                horizontalalignment='center', verticalalignment='center')
+        if condition['TTA'] == 6:
+            ax.text(0.99, 0.5, 'd=%im' % condition['d'], fontsize=18, transform=ax.transAxes, rotation=-90, 
+                horizontalalignment='center', verticalalignment='center')
+        
         exp_rts = exp_data[(exp_data.is_turn_decision) 
-                            & (exp_data.d_condition==condition[0]) 
-                            & (exp_data.tta_condition==condition[1])].RT
+                            & (exp_data.d_condition==condition['d']) 
+                            & (exp_data.tta_condition==condition['TTA'])].RT
         if len(exp_rts) >= 10:
-            sns.distplot(a=exp_rts, ax=ax, label='Experiment', color='C1', kde_kws={'clip': (0.0, exp_rts.max())})
+            sns.distplot(a=exp_rts, ax=ax, label='Experiment', color='C1', 
+                         kde_kws={'clip': (0.0, exp_rts.max()), 'cumulative': cumulative}, hist_kws={'cumulative': cumulative})
             
             if not model_rts is None:
-                model_hist = model_rts[(model_rts.d_condition==condition[0]) & (model_rts.tta_condition==condition[1])]
+                model_hist = model_rts[(model_rts.d_condition==condition['d']) & (model_rts.tta_condition==condition['TTA'])]
                 ax.plot(model_hist.t, model_hist.rt_corr_pdf, label='Model', color='grey')
             
         ax.set_xlabel('')
         ax.set_xlim((0, 2.5))
-        ax.text(0.7, 0.8, 'N=%i' % len(exp_rts), fontsize=16, transform=ax.transAxes,  
-                horizontalalignment='center', verticalalignment='center')
-
-    for ax, d in zip(axes[0], sorted(exp_data.d_condition.unique())):
-        ax.text(0.5, 0.99, 'd=%im' % d, fontsize=18, transform=ax.transAxes,
-                horizontalalignment='center', verticalalignment='center')
-
-    for ax, tta in zip(axes.T[2], sorted(exp_data.tta_condition.unique())):
-        ax.text(0.99, 0.5, 'TTA=%is' % tta, fontsize=18, transform=ax.transAxes, rotation=-90, 
-                horizontalalignment='center', verticalalignment='center')
-
-    legend_elements = [Patch(facecolor='C1', alpha=0.5, label='Data'),
-                       Line2D([0], [0], color='grey', lw=2, label='Model')]
-
-
+#        ax.text(0.7, 0.8, str(condition), fontsize=12, transform=ax.transAxes,  
+#                horizontalalignment='center', verticalalignment='center')
+#            'N=%i' % len(exp_rts)
+#    legend_elements = [Patch(facecolor='C1', alpha=0.5, label='Data'),
+#                       Line2D([0], [0], color='grey', lw=2, label='Model')]
 #     fig.legend(handles=legend_elements, loc='center', bbox_to_anchor=(.98, 0.5), fontsize=16, frameon=False)
     fig.text(0.5, 0.04, 'RT', fontsize=24)
     fig.text(0.04, 0.5, 'pdf', fontsize=24, rotation=90)
