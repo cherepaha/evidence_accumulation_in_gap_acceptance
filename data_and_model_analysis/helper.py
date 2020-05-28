@@ -8,7 +8,7 @@ import csv
 from matplotlib.lines import Line2D
 
 def merge_csv(directory):
-    fout = open(directory+'_merged.csv','w+')
+    fout = open(directory+'_parameters_fitted.csv','w+')
     header_written = False
     for i, file_name in enumerate(os.listdir(directory)):
         file_path = os.path.join(directory, file_name)
