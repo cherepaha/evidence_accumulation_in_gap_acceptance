@@ -56,7 +56,10 @@ def fit_model_by_condition(subj_idx=0, n=1, training_conditions='all'):
     directory = '../model_fit_results/cross_validation_%s/' % (training_conditions)
         
     file_name = 'subj_%s.csv' % (str(subj_id))
-    helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'n', 'loss'] + modelTtaBounds.param_names)
+    if n>1:
+        helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'n', 'loss'] + modelTtaBounds.param_names)
+    else:
+        helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'loss'] + modelTtaBounds.param_names)
     
     for i in range(n):
         print('Training conditions: %s' % (training_conditions))
@@ -67,7 +70,11 @@ def fit_model_by_condition(subj_idx=0, n=1, training_conditions='all'):
             print('len(training_data): ' + str(len(training_data)))
             
             fitted_model = helper.fit_model(modelTtaBounds.model, training_data, loss)
-            helper.write_to_csv(directory, file_name, [subj_id, 'NA', 'NA', n, fitted_model.get_fit_result().value()] 
+            if n>1:
+                helper.write_to_csv(directory, file_name, [subj_id, 'NA', 'NA', n, fitted_model.get_fit_result().value()] 
+                                                        + fitted_model.get_model_parameters())
+            else:
+                helper.write_to_csv(directory, file_name, [subj_id, 'NA', 'NA', fitted_model.get_fit_result().value()] 
                                                         + fitted_model.get_model_parameters())
         else:
             for condition in conditions:
@@ -80,6 +87,11 @@ def fit_model_by_condition(subj_idx=0, n=1, training_conditions='all'):
                     raise(ValueError('training_conditions should be one of ["all", "8", "4"]'))    
                 print('len(training_data): ' + str(len(training_data)))                
                 fitted_model = helper.fit_model(modelTtaBounds.model, training_data, loss)            
-                helper.write_to_csv(directory, file_name, [subj_id, condition['tta'], condition['d'], n, 
+                if n>1:
+                    helper.write_to_csv(directory, file_name, [subj_id, condition['tta'], condition['d'], n, 
+                                                           fitted_model.get_fit_result().value()] 
+                                                            + fitted_model.get_model_parameters())
+                else:
+                    helper.write_to_csv(directory, file_name, [subj_id, condition['tta'], condition['d'], 
                                                            fitted_model.get_fit_result().value()] 
                                                             + fitted_model.get_model_parameters())

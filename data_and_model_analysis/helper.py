@@ -133,66 +133,6 @@ def plot_var_by_subject_v2(data, model_measures_path, var, ylabel):
 
     return fig, axes
 
-def plot_vincentized_rt_pdf(exp_data, model_rts, cumulative=False):
-    fig, axes = plt.subplots(3, 3, figsize=(10,8), sharex=True, sharey=True)
-    conditions = [{'d': d, 'TTA': TTA}
-                  for d in sorted(exp_data.d_condition.unique()) 
-                  for TTA in sorted(exp_data.tta_condition.unique())]
-    q = np.linspace(0.01, 0.99, 10)
-#    q = [0.1, 0.3, 0.5, 0.7, 0.9]
-    
-    for (ax, condition) in zip(axes.flatten(), conditions):
-        if condition['d'] == 90:
-            if condition['TTA'] == 4:
-                ax.set_axis_off()
-                ax.text(0.5, 0.0, 'TTA=%is' % condition['TTA'], fontsize=18, transform=ax.transAxes, 
-                        horizontalalignment='center', verticalalignment='center')
-            else:
-                ax.text(0.5, 1.01, 'TTA=%is' % condition['TTA'], fontsize=18, transform=ax.transAxes, 
-                        horizontalalignment='center', verticalalignment='center')
-        if condition['TTA'] == 6:
-            ax.text(1.0, 0.5, 'd=%im' % condition['d'], fontsize=18, transform=ax.transAxes, rotation=-90, 
-                horizontalalignment='center', verticalalignment='center')
-        
-        condition_data = exp_data[(exp_data.is_turn_decision) 
-                            & (exp_data.d_condition==condition['d']) 
-                            & (exp_data.tta_condition==condition['TTA'])]
-        if len(condition_data) >= 10:
-            condition_quantiles = condition_data.groupby('subj_id').apply(lambda d: np.quantile(a=d.RT, q=q)).mean()
-            rt_range = np.linspace(condition_quantiles.min(), condition_quantiles.max(), len(q))
-            step = rt_range[1] - rt_range[0]
-            rt_grid = np.concatenate([rt_range[:3]-3*step, rt_range, rt_range[-3:]+step*3])
-            vincentized_cdf = np.interp(rt_grid, condition_quantiles, q)
-            
-            if cumulative:
-                ax.plot(rt_grid, vincentized_cdf, label='Data', color='C1', ls='', marker='o')
-                ax.set_ylim([-0.05, 1.1])
-                ax.set_yticks([0.0, 0.5, 1.0])
-            else:
-                _, data_pdf = np.histogram(condition_data.RT, bins=rt_grid)
-                vincentized_pdf = differentiate(t=rt_grid, x=vincentized_cdf)
-                ax.plot(rt_grid, vincentized_pdf, label='Data', color='C1')
-            
-            if not model_rts is None:
-                condition_rts = model_rts[(model_rts.subj_id=='all') 
-                                        & (model_rts.d_condition==condition['d']) 
-                                        & (model_rts.tta_condition==condition['TTA'])]
-                ax.plot(condition_rts.t, condition_rts.rt_corr_pdf, label='Model', color='grey')
-            
-        ax.set_xlabel('')
-        ax.set_xlim((0, 1.5))
-        sns.despine(offset=5, trim=True)
-#        ax.text(0.7, 0.8, str(condition), fontsize=12, transform=ax.transAxes,  
-#                horizontalalignment='center', verticalalignment='center')
-
-#    legend_elements = [Patch(facecolor='C1', alpha=0.5, label='Data'),
-#                       Line2D([0], [0], color='grey', lw=2, label='Model')]
-#     fig.legend(handles=legend_elements, loc='center', bbox_to_anchor=(.98, 0.5), fontsize=16, frameon=False)
-    fig.text(0.4, 0.04, 'Response time', fontsize=18)
-    fig.text(0.04, 0.5, 'CDF' if cumulative else 'PDF', fontsize=18, rotation=90)
-    
-    return fig, axes
-
 def differentiate(t, x):
     # To be able to reasonably calculate derivatives at the end-points of the trajectories,
     # I append three extra points before and after the actual trajectory, so we get N+6
