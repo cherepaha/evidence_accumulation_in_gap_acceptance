@@ -48,7 +48,6 @@ class LossWLSVincent(LossWLS):
         if exp:
             vincentized_quantiles = (self.comb_rts.groupby('subj_id')
                                         .apply(lambda group: np.quantile(a=group.RT, q=self.rt_quantiles))).mean()
-#            print(vincentized_quantiles)
             return vincentized_quantiles
         else:
             return super().get_rt_quantiles(x, t_domain, exp=False)
