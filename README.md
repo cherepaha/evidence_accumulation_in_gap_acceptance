@@ -1,2 +1,10 @@
 # Evidence accumulation in gap acceptance
-Code for the driving simulator experiment, data analysis, and modeling
+This repository contains the code accompanying the paper [Should I stay or should I go? Evidence accumulation drives decision making in human drivers](https://psyarxiv.com/p8dxn/download?format=pdf). To run it, you need to have Python 3 and Jupyter Notebook installed, along with the recent versions of NumPy, SciPy, matplotlib, and pandas. For model analyses we used [PyDDM](https://github.com/mwshinn/PyDDM).
+
+The data were collected in [CARLA](https://carla.readthedocs.io/en/latest/). The client script `LTAPCarlaClient.py` needs a configured CARLA server (see [installation manual](https://carla.readthedocs.io/en/latest/start_quickstart/)) with the `CityMap` map installed (see [this tutorial](https://carla.readthedocs.io/en/latest/tuto_A_add_map/) for instructions on how to add map from the provided `xodr` files).
+
+To reproduce the analyses reported in the paper, first download the data from [OSF](https://osf.io/x3ns6/). You can preprocess the raw data by running `preprocess_data.py` or just use the preprocessed data from OSF.
+
+The `data_overview.ipynb` notebook provides, unsurprisingly, a quick overview of the data which is nice to have before you go into analyses reported in the paper.
+
+The figures from the paper are reproduced in the notebook `paper_figures.ipynb`. Some of them rely on the results of model fitting and simulation. These are provided in this repository (`model_fit_results` folder), but can also be reproduced from scratch. To do this, run `fit_model_by_condition` from `fit_model.py` providing as parameters the index of participant (or `all` to fit to group-averaged data), and the type of fitting (`n_training_conditions=9` to fit model to all available data, `n_training_conditions=8` for cross-validation). Fitting a model to a single dataset can take more than an hour on a decent CPU, which means that to obtain all model parameters used for the figures can take a while. To speed things up, `fit_model_by_condition` can be run in several concurrent python consoles, for several different participants. Once model fitting is complete, the code in `model_simulation.ipynb` can be used to obtain choice probabilities and response times for each of the fitted parameter combinations.
