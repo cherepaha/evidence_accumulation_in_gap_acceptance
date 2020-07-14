@@ -1,40 +1,17 @@
 import model_definitions
 import pandas as pd
 import helper
-#
-#def fit_model_by_subject(subj_idx, ndt='gaussian', n=5): 
-#    modelTtaBounds = model_definitions.ModelTtaBounds(ndt=ndt)
-#    exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision', 
-#                                                        'tta_condition', 'd_condition'])
-#    subjects = exp_data.subj_id.unique()
-#    subj_id = subjects[subj_idx]
-#    condition = 'all'
-#    
-#    training_data = exp_data[(exp_data.subj_id == subj_id)]
-#    
-#    print(subj_id)
-#    print(condition)
-#    
-#    directory = '../model_fit_results/%s_ndt/' % (ndt)
-#    file_name = 'model_%s_params_subj_%i.csv' % (modelTtaBounds.model.name[0], subj_id)
-#    helper.write_to_csv(directory, file_name, ['subj_id', 'i', 'loss'] + modelTtaBounds.param_names)
-#    
-#    for i in range(n):
-#        before = time.time()
-##        fitted_model = helper.fit_model(subj_id, condition, modelTtaBounds.model, exp_data, LossWLS)
-#        fitted_model = helper.fit_model(modelTtaBounds.model, training_data, LossWLS)        
-#        after= time.time()
-#    
-#        print('Subject %i iteration %i: Fitting time: %f minutes' % (subj_id, i, int(after-before)/60))
-#        
-#        helper.write_to_csv(directory, file_name, [subj_id, i, fitted_model.get_fit_result().value()] 
-#                            + fitted_model.get_model_parameters())
 
 def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_conditions='all'): 
     '''
-    n_training_conditions defines how many conditions will be included in the training set.
-    For `4`, training data for each condition (TTA, d) will be the decisions where both TTA and d
-    are different from those of the current condition. For `8`, all other conditions will be included.
+    NB: This script can (and should) be run in parallel in several different python consoles, one subject per console
+    subj_idx: 0 to 6 to obtain individual fits, or 'all' to fit to group-averaged data
+    n: number of repeated fits per condition (n>1 can be used to quickly check robustness of model fitting)
+    n_training_conditions: defines how many conditions will be included in the training set (4, 8, or 9)
+                            For `4`, training data for each condition (TTA, d) will be the decisions where both TTA and d
+                            are different from those of the current condition. For `8`, all other conditions will be included.
+    test_conditions: 'all' to evaluate each fitted model on the nine default conditions, or a list of dicts with conditions 
+                        on which to evaluate each fitted model 
     '''
     modelTtaBounds = model_definitions.ModelTtaBounds(ndt='gaussian')
     exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision', 
