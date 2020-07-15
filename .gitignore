@@ -103,7 +103,5 @@ venv.bak/
 # mypy
 .mypy_cache/
 
-/figures
-*.png
-raw_data_merged.txt
-processed_data.csv
+/data
+/output
