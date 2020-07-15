@@ -10,8 +10,7 @@ def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_condit
     n_training_conditions: defines how many conditions will be included in the training set (4, 8, or 9)
                             For `4`, training data for each condition (TTA, d) will be the decisions where both TTA and d
                             are different from those of the current condition. For `8`, all other conditions will be included.
-    test_conditions: 'all' to evaluate each fitted model on the nine default conditions, or a list of dicts with conditions 
-                        on which to evaluate each fitted model 
+    test_conditions: 'all' to cross-validate model on all nine conditions, or a list of dicts with conditions for which to fit the model 
     '''
     modelTtaBounds = model_definitions.ModelTtaBounds(ndt='gaussian')
     exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision', 
@@ -34,7 +33,8 @@ def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_condit
         subj_data = exp_data[(exp_data.subj_id == subj_id)]
         loss = model_definitions.LossWLS
         
-    directory = '../model_fit_results/cross_validation_%s/' % (n_training_conditions)
+    directory = ('../model_fit_results/%s/' % 
+                 ('full_data' if n_training_conditions==9 else 'cross_validation_%i' % (n_training_conditions)))
         
     file_name = 'subj_%s.csv' % (str(subj_id))
     if n>1:
