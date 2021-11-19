@@ -46,7 +46,7 @@ def get_data(data_file='raw_data_merged.txt'):
     
     data.loc[:,'t'] = data.t.groupby(data.index.names).transform(lambda t: (t-t.min()))
     
-    # we are only intersted in left turns
+    # we are only interested in left turns
     data = data[data.turn_direction==1]
 
     # only consider the data recorded within 10 meters of each intersection
@@ -70,13 +70,14 @@ def get_data(data_file='raw_data_merged.txt'):
     
     # get the DVs and helper variables
     measures = data.groupby(data.index.names).apply(get_measures)
-#     print(measures.groupby(['subj_id', 'session', 'route']).count())
+    print(measures.groupby(['subj_id', 'session', 'route']).size())
     
     data = data.join(measures)    
     
     # RT is -1 if a driver didn't stop and the bot did not appear at the intersection; we discard these trials
     print('Number of discarded trials: %i' % (len(measures[measures.RT<=0])))
-    
+    print(measures[measures.RT<=0].groupby(['subj_id']).size())
+
     data = data[data.RT>0]
     measures = measures[measures.RT>0]    
     
@@ -89,7 +90,7 @@ def get_data(data_file='raw_data_merged.txt'):
 
 data_path='../data'
 
-#merge_txt_files(data_path)
+# merge_txt_files(data_path)
 data, measures = get_data(os.path.join(data_path, 'raw_data_merged.txt'))
 
 # is_turn_decision is calculated based on the minimum distance ever observed between ego and bot during the interaction.
@@ -102,8 +103,8 @@ measures['is_turn_decision'] = measures.min_distance > 5
 # measures.loc[(305, 1, 1, 8), ['is_turn_decision']] = True
 
 # add column 'decision' for nicer visualization
-measures['decision'] = 'Wait'
-measures.loc[measures.is_turn_decision, ['decision']] = 'Turn'
+measures['decision'] = 'Stay'
+measures.loc[measures.is_turn_decision, ['decision']] = 'Go'
 
-measures.to_csv(os.path.join(data_path, 'measures.csv'), index=True)
+# measures.to_csv(os.path.join(data_path, 'measures.csv'), index=True)
 data.to_csv(os.path.join(data_path, 'processed_data.csv'), index=True)

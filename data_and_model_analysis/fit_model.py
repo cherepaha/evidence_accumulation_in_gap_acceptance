@@ -1,4 +1,5 @@
-import model_definitions
+import models
+import loss_functions
 import pandas as pd
 import helper
 
@@ -12,7 +13,7 @@ def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_condit
                             are different from those of the current condition. For `8`, all other conditions will be included.
     test_conditions: 'all' to cross-validate model on all nine conditions, or a list of dicts with conditions for which to fit the model 
     '''
-    modelTtaBounds = model_definitions.ModelTtaBounds(ndt='gaussian')
+    model = models.ModelDynamicDriftCollapsingBounds()
     exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision', 
                                                         'tta_condition', 'd_condition'])
     subjects = exp_data.subj_id.unique()
@@ -27,20 +28,20 @@ def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_condit
     if subj_idx == 'all':
         subj_id = 'all'
         subj_data = exp_data 
-        loss = model_definitions.LossWLSVincent
+        loss = loss_functions.LossWLSVincent
     else:
         subj_id = subjects[subj_idx]
         subj_data = exp_data[(exp_data.subj_id == subj_id)]
-        loss = model_definitions.LossWLS
+        loss = loss_functions.LossWLS
         
     directory = ('../model_fit_results/%s/' % 
                  ('full_data' if n_training_conditions==9 else 'cross_validation_%i' % (n_training_conditions)))
         
     file_name = 'subj_%s.csv' % (str(subj_id))
     if n>1:
-        helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'n', 'loss'] + modelTtaBounds.param_names)
+        helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'n', 'loss'] + model.param_names)
     else:
-        helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'loss'] + modelTtaBounds.param_names)
+        helper.write_to_csv(directory, file_name, ['subj_id', 'tta', 'd', 'loss'] + model.param_names)
     
     for i in range(n):
         print('Training conditions: %i' % (n_training_conditions))
@@ -50,7 +51,7 @@ def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_condit
             training_data = subj_data
             print('len(training_data): ' + str(len(training_data)))
             
-            fitted_model = helper.fit_model(modelTtaBounds.model, training_data, loss)
+            fitted_model = helper.fit_model(model.model, training_data, loss)
             if n>1:
                 helper.write_to_csv(directory, file_name, [subj_id, 'NA', 'NA', i, fitted_model.get_fit_result().value()] 
                                                         + fitted_model.get_model_parameters())
@@ -67,7 +68,7 @@ def fit_model_by_condition(subj_idx=0, n=1, n_training_conditions=9, test_condit
                 else:
                     raise(ValueError('n_training_conditions should be one of [9, 8, 4]'))    
                 print('len(training_data): ' + str(len(training_data)))                
-                fitted_model = helper.fit_model(modelTtaBounds.model, training_data, loss)            
+                fitted_model = helper.fit_model(model.model, training_data, loss)
                 if n>1:
                     helper.write_to_csv(directory, file_name, [subj_id, condition['tta'], condition['d'], n, 
                                                            fitted_model.get_fit_result().value()] 
