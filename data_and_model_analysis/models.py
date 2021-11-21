@@ -31,18 +31,16 @@ class DriftTtaDistanceStatic(ddm.models.Drift):
     required_conditions = ['tta_condition', 'd_condition']
 
     def get_drift(self, t, conditions, **kwargs):
-        return (self.alpha * (conditions['tta_condition']
-                              + self.beta * conditions['d_condition'] - self.theta))
+        return self.alpha * (conditions['tta_condition'] + self.beta * conditions['d_condition'] - self.theta)
 
 
 class DriftTtaDistanceDynamic(DriftTtaDistanceStatic):
     name = 'Drift dynamically depends on the real-time values of TTA and distance'
 
     def get_drift(self, t, conditions, **kwargs):
-        return (self.alpha * (conditions['tta_condition'] - t + self.beta
-                              * (conditions['d_condition'] - t * conditions['d_condition'] / conditions[
-                    'tta_condition'])
-                              - self.theta))
+        return self.alpha * (conditions['tta_condition'] - t + self.beta
+                             * (conditions['d_condition'] - t * conditions['d_condition'] / conditions['tta_condition'])
+                             - self.theta)
 
 
 class BoundCollapsingTta(ddm.models.Bound):
@@ -58,7 +56,7 @@ class BoundCollapsingTta(ddm.models.Bound):
 class ModelStaticDriftFixedBounds():
     # simplest model, vanilla DDM with drift dependent on TTA and distance
     T_dur = 2.5
-    param_names = ['alpha', 'beta', 'theta', 'noise', 'b', 'ndt_location', 'ndt_scale']
+    param_names = ['alpha', 'beta', 'theta', 'b', 'ndt_location', 'ndt_scale']
 
     def __init__(self):
         self.overlay = OverlayNonDecisionGaussian(ndt_location=ddm.Fittable(minval=0, maxval=1.0),
@@ -87,7 +85,7 @@ class ModelDynamicDriftFixedBounds(ModelStaticDriftFixedBounds):
 
 
 class ModelDynamicDriftCollapsingBounds(ModelDynamicDriftFixedBounds):
-    param_names = ['alpha', 'beta', 'theta', 'noise', 'b_0', 'k', 'tta_crit', 'ndt_location', 'ndt_scale']
+    param_names = ['alpha', 'beta', 'theta', 'b_0', 'k', 'tta_crit', 'ndt_location', 'ndt_scale']
 
     def __init__(self):
         super().__init__()

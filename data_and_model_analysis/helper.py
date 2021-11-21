@@ -153,10 +153,10 @@ def differentiate(t, x):
     
     return v
 
-def write_to_csv(directory, filename, array):
+def write_to_csv(directory, filename, array, write_mode='a'):
     if not os.path.exists(directory):
         os.makedirs(directory)
-    with open(os.path.join(directory, filename), 'a', newline='') as csvfile:
+    with open(os.path.join(directory, filename), write_mode, newline='') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
         writer.writerow(array)
        
@@ -164,5 +164,4 @@ def fit_model(model, training_data, loss_function):
     training_sample = ddm.Sample.from_pandas_dataframe(df=training_data, 
                                                        rt_column_name='RT', 
                                                        correct_column_name='is_turn_decision')
-    return(ddm.fit_adjust_model(sample=training_sample, model=model, 
-                                lossfunction=loss_function, suppress_output=True))
+    return ddm.fit_adjust_model(sample=training_sample, model=model, lossfunction=loss_function, verbose=False)
