@@ -106,5 +106,5 @@ measures['is_turn_decision'] = measures.min_distance > 5
 measures['decision'] = 'Stay'
 measures.loc[measures.is_turn_decision, ['decision']] = 'Go'
 
-# measures.to_csv(os.path.join(data_path, 'measures.csv'), index=True)
+measures.to_csv(os.path.join(data_path, 'measures.csv'), index=True)
 data.to_csv(os.path.join(data_path, 'processed_data.csv'), index=True)
