@@ -19,8 +19,9 @@ def get_measures(traj):
     This function extracts dependent variables and some other useful things from an individual trajectory.    
     The time of bot spawn is the first time bot_a is less than 10% of its max value (after the ego car slows
     down to 1 m/s). 
-    '''   
-    if sum(traj.ego_v<1.0):
+    '''
+    # if the driver decelerated to <1m/s and the bot did spawn, we can calculate the RT
+    if sum(traj.ego_v<1.0) and sum(traj.bot_x>0.0):
         idx_slowdown = (traj.ego_v<1.0).to_numpy().nonzero()[0][0]
         idx_bot_spawn = traj.bot_x.to_numpy().nonzero()[0][0] + (traj[idx_slowdown:].bot_a<1).to_numpy().nonzero()[0][0]
         throttle = traj.iloc[idx_bot_spawn:, traj.columns.get_loc('throttle')]
@@ -29,7 +30,6 @@ def get_measures(traj):
         idx_min_distance = idx_bot_spawn + np.argmin(traj.d_ego_bot[idx_bot_spawn:].values)
         min_distance = min(traj.d_ego_bot[idx_bot_spawn:].values)
     else:
-        # if the driver never decelerated to <1m/s, the bot did not spawn
         idx_bot_spawn = -1
         idx_response = -1
         idx_min_distance = -1
@@ -49,8 +49,8 @@ def get_data(data_file='raw_data_merged.txt'):
     # we are only interested in left turns
     data = data[data.turn_direction==1]
 
-    # only consider the data recorded within 10 meters of each intersection
-    data = data[abs(data.ego_distance_to_intersection)<10]
+    # only consider the data recorded within 15 meters of each intersection
+    data = data[abs(data.ego_distance_to_intersection)<15]
 
     # smooth the time series by filtering out the noise using Savitzky-Golay filter
     apply_filter = lambda traj: savgol_filter(traj, window_length=21, polyorder=2, axis=0)

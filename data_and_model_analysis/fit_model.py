@@ -97,4 +97,4 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
 
     return fitted_model
 
-fit_model_by_condition(model_no=3, n_training_conditions=8, subj_idx='all')
+fit_model_by_condition(model_no=1, n_training_conditions=9, subj_idx=8)
