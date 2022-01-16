@@ -7,7 +7,7 @@ import helper
 def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9, test_conditions='all'):
     '''
     NB: This script can (and should) be run in parallel in several different python consoles, one subject per console
-    model_idx: 1 for the full model (); 2 for ; 3 for "vanilla" DDM (ModelStaticDriftFixedBounds)
+    model_idx: 1 for the full model described in the paper; 2 for the model with fixed bounds; 3 for "vanilla" DDM
     subj_idx: 0 to 15 to obtain individual fits, or 'all' to fit to group-averaged data
     n: number of repeated fits per condition (n>1 can be used to quickly check robustness of model fitting)
     n_training_conditions: defines how many conditions will be included in the training set (4, 8, or 9)

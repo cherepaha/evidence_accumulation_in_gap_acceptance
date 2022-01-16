@@ -4,7 +4,7 @@ import ddm
 import pandas as pd
 
 class LossWLS(ddm.LossFunction):
-    name = 'Weighted least squares as described in Ratcliff & Tuerlinckx 2002'
+    name = "Weighted least squares as described in Ratcliff & Tuerlinckx 2002"
     rt_quantiles = [0.1, 0.3, 0.5, 0.7, 0.9]
     rt_q_weights = [2, 2, 1, 1, 0.5]
 
@@ -30,8 +30,8 @@ class LossWLS(ddm.LossFunction):
             #            print(c)
             comb_sample = self.sample.subset(**comb)
             WLS += 4 * (solultions[c].prob_correct() - comb_sample.prob_correct()) ** 2
-            self.comb_rts = pd.DataFrame([[item[0], item[1]['subj_id']] for item in comb_sample.items(correct=True)],
-                                         columns=['RT', 'subj_id'])
+            self.comb_rts = pd.DataFrame([[item[0], item[1]["subj_id"]] for item in comb_sample.items(correct=True)],
+                                         columns=["RT", "subj_id"])
 
             # Sometimes model p_correct is very close to 0, then RT distribution is weird, in this case ignore RT error
             if ((solultions[c].prob_correct() > 0.001) & (comb_sample.prob_correct() > 0)):
@@ -42,12 +42,12 @@ class LossWLS(ddm.LossFunction):
 
 
 class LossWLSVincent(LossWLS):
-    name = '''Weighted least squares as described in Ratcliff & Tuerlinckx 2002, 
-                fitting to the quantile function vincent-averaged per subject (Ratcliff 1979)'''
+    name = """Weighted least squares as described in Ratcliff & Tuerlinckx 2002, 
+                fitting to the quantile function vincent-averaged per subject (Ratcliff 1979)"""
 
     def get_rt_quantiles(self, x, t_domain, exp=False):
         if exp:
-            vincentized_quantiles = (self.comb_rts.groupby('subj_id')
+            vincentized_quantiles = (self.comb_rts.groupby("subj_id")
                                      .apply(lambda group: np.quantile(a=group.RT, q=self.rt_quantiles))).mean()
             return vincentized_quantiles
         else:
