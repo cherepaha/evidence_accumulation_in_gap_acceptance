@@ -24,7 +24,7 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
     else:
         ValueError("model_no should be 1, 2, or 3")
 
-    exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_turn_decision',
+    exp_data = pd.read_csv('../data/measures.csv', usecols=['subj_id', 'RT', 'is_go_decision',
                                                             'tta_condition', 'd_condition'])
     subjects = exp_data.subj_id.unique()
 

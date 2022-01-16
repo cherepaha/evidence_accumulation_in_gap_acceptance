@@ -163,5 +163,5 @@ def write_to_csv(directory, filename, array, write_mode='a'):
 def fit_model(model, training_data, loss_function):
     training_sample = ddm.Sample.from_pandas_dataframe(df=training_data, 
                                                        rt_column_name='RT', 
-                                                       correct_column_name='is_turn_decision')
+                                                       correct_column_name='is_go_decision')
     return ddm.fit_adjust_model(sample=training_sample, model=model, lossfunction=loss_function, verbose=False)

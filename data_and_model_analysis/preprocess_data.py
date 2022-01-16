@@ -93,18 +93,18 @@ data_path='../data'
 # merge_txt_files(data_path)
 data, measures = get_data(os.path.join(data_path, 'raw_data_merged.txt'))
 
-# is_turn_decision is calculated based on the minimum distance ever observed between ego and bot during the interaction.
-# If the cars were no closer to each other than the lane width (3.5m + 1.5 margin), we count this as a turn decision.
+# is_go_decision is calculated based on the minimum distance ever observed between ego and bot during the interaction.
+# If the cars were no closer to each other than the lane width (3.5m + 1.5 margin), we count this as a go decision.
 # Based on visual inspection of animations for all trials, this works in all but one trials.
-measures['is_turn_decision'] = measures.min_distance > 5
+measures['is_go_decision'] = measures.min_distance > 5
 
 # In some trials this criterion wouldn't work, because e.g. a subject might hit a post after turning left, 
 # so that the bot is less than 5m away from the ego car after the turn. We need to check this and fix manually
-# measures.loc[(305, 1, 1, 8), ['is_turn_decision']] = True
+# measures.loc[(305, 1, 1, 8), ['is_go_decision']] = True
 
 # add column 'decision' for nicer visualization
 measures['decision'] = 'Stay'
-measures.loc[measures.is_turn_decision, ['decision']] = 'Go'
+measures.loc[measures.is_go_decision, ['decision']] = 'Go'
 
 measures.to_csv(os.path.join(data_path, 'measures.csv'), index=True)
 data.to_csv(os.path.join(data_path, 'processed_data.csv'), index=True)
