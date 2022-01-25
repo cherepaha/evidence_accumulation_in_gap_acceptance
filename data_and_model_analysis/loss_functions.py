@@ -23,19 +23,19 @@ class LossWLS(ddm.LossFunction):
         return np.array(rt_quantile_values)
 
     def loss(self, model):
-        solultions = self.cache_by_conditions(model)
+        solutions = self.cache_by_conditions(model)
         WLS = 0
         for comb in self.sample.condition_combinations(required_conditions=self.required_conditions):
             c = frozenset(comb.items())
             #            print(c)
             comb_sample = self.sample.subset(**comb)
-            WLS += 4 * (solultions[c].prob_correct() - comb_sample.prob_correct()) ** 2
+            WLS += 4 * (solutions[c].prob_correct() - comb_sample.prob_correct()) ** 2
             self.comb_rts = pd.DataFrame([[item[0], item[1]["subj_id"]] for item in comb_sample.items(correct=True)],
                                          columns=["RT", "subj_id"])
 
             # Sometimes model p_correct is very close to 0, then RT distribution is weird, in this case ignore RT error
-            if ((solultions[c].prob_correct() > 0.001) & (comb_sample.prob_correct() > 0)):
-                model_rt_q = self.get_rt_quantiles(solultions[c], model.t_domain(), exp=False)
+            if ((solutions[c].prob_correct() > 0.001) & (comb_sample.prob_correct() > 0)):
+                model_rt_q = self.get_rt_quantiles(solutions[c], model.t_domain(), exp=False)
                 exp_rt_q = self.get_rt_quantiles(comb_sample, model.t_domain(), exp=True)
                 WLS += np.dot((model_rt_q - exp_rt_q) ** 2, self.rt_q_weights) * comb_sample.prob_correct()
         return WLS

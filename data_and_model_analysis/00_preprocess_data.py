@@ -20,8 +20,6 @@ def get_measures(traj):
     """
     This function extracts dependent variables and some other useful measures from an individual trajectory.
     """
-    print(traj.name)
-
     # -1 is assigned as the default value so that if the algorithms below do not trigger, we exclude the trial later on
     idx_bot_spawn = -1
     idx_response = -1
@@ -99,18 +97,14 @@ def get_processed_data(data_file="raw_data_merged.txt"):
     measures = data.groupby(data.index.names).apply(get_measures)
     print(measures.groupby(["subj_id", "session", "route"]).size())
 
-    # merging the measures into the dynamics dataframe to manipulate the latter more conveniently
-    data = data.join(measures)
-
-    # RT is defined as -1 if a driver didn't stop and the bot did not appear at the intersection; we discard these trials
-    print("Number of discarded trials: %i" % (len(measures[measures.RT <= 0])))
-    print(measures[measures.RT <= 0].groupby(["subj_id"]).size())
-
     # is_go_decision is calculated based on the minimum distance observed between ego and bot during the interaction.
     # If the cars were no closer to each other than the lane width (3.5m + 1.5 margin), we count this as a go
     # decision. Based on visual inspection of animations for all trials, this works in the vast majority of trials
     # except for collisions
     measures["is_go_decision"] = measures.min_distance > 5
+
+    # merging the measures into the dynamics dataframe to manipulate the latter more conveniently
+    data = data.join(measures)
 
     # In some trials this criterion doesn't work because the ego vehicle collided with the bot. In these trials the
     # bot is less than 5m away from the ego vehicle even though the participant made the go decision. These trials
@@ -133,11 +127,18 @@ def get_processed_data(data_file="raw_data_merged.txt"):
     conditions = data.loc[:, ["tta_condition", "d_condition", "v_condition"]].groupby(data.index.names).first()
     measures = measures.join(conditions)
 
-    measures[measures.RT <= 0].to_csv(os.path.join(data_path, "measures_excluded.csv"), index=True)
-    data[data.RT <= 0].to_csv(os.path.join(data_path, "processed_data_excluded.csv"), index=True)
+    excluded_data_idx = (data.RT <= 0) | ((data.RT > 2.0) & data.is_go_decision)
+    excluded_measures_idx = (measures.RT <= 0) | ((measures.RT > 2.0) & measures.is_go_decision)
 
-    data = data[data.RT > 0]
-    measures = measures[measures.RT > 0]
+    # RT is defined as -1 if a driver didn't stop and the bot did not appear at the intersection; we discard these trials
+    print("Number of discarded trials: %i" % (len(measures[excluded_measures_idx])))
+    print(measures[excluded_measures_idx].groupby(["subj_id"]).size())
+
+    data[excluded_data_idx].to_csv(os.path.join(data_path, "processed_data_excluded.csv"), index=True)
+    measures[excluded_measures_idx].to_csv(os.path.join(data_path, "measures_excluded.csv"), index=True)
+
+    data = data[~excluded_data_idx]
+    measures = measures[~excluded_measures_idx]
 
     return data, measures
 

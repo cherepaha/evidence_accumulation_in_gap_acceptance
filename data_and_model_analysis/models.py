@@ -8,8 +8,6 @@ class OverlayNonDecisionGaussian(ddm.Overlay):
     required_parameters = ["ndt_location", "ndt_scale"]
 
     def apply(self, solution):
-        # Make sure params are within range
-        assert self.ndt_scale > 0, "Invalid st parameter"
         # Extract components of the solution object for convenience
         corr = solution.corr
         err = solution.err
@@ -62,7 +60,7 @@ class ModelStaticDriftFixedBounds():
         self.overlay = OverlayNonDecisionGaussian(ndt_location=ddm.Fittable(minval=0, maxval=1.0),
                                                   ndt_scale=ddm.Fittable(minval=0.001, maxval=0.3))
         self.drift = DriftTtaDistanceStatic(alpha=ddm.Fittable(minval=0.1, maxval=5),
-                                            beta=ddm.Fittable(minval=0, maxval=0.5),
+                                            beta=ddm.Fittable(minval=0, maxval=1.0),
                                             theta=ddm.Fittable(minval=4, maxval=60))
         self.bound = ddm.BoundConstant(B=ddm.Fittable(minval=0.1, maxval=5))
 
@@ -75,9 +73,9 @@ class ModelDynamicDriftFixedBounds(ModelStaticDriftFixedBounds):
     def __init__(self):
         super().__init__()
 
-        self.drift = DriftTtaDistanceDynamic(alpha=ddm.Fittable(minval=0.1, maxval=3),
+        self.drift = DriftTtaDistanceDynamic(alpha=ddm.Fittable(minval=0.1, maxval=5.0),
                                              beta=ddm.Fittable(minval=0, maxval=1.0),
-                                             theta=ddm.Fittable(minval=4, maxval=40))
+                                             theta=ddm.Fittable(minval=4, maxval=60))
 
         self.model = ddm.Model(name="Dynamic drift defined by real-time TTA and d, constant bounds",
                                drift=self.drift, noise=ddm.NoiseConstant(noise=1), bound=self.bound,
