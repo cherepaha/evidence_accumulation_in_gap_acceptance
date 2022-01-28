@@ -50,7 +50,7 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
                         (model_no,
                          "full_data" if n_training_conditions == 9 else "cross_validation_%i" % n_training_conditions))
 
-    file_name = "subj_%s_repeated.csv" % (str(subj_id))
+    file_name = "subj_%s.csv" % (str(subj_id))
     if not os.path.isfile(os.path.join(output_directory, file_name)):
         if n > 1:
             helper.write_to_csv(output_directory, file_name,
@@ -101,13 +101,7 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
 
     return fitted_model
 
-
-# for subj_idx in [0, 1, 2, 3]:
-# for subj_idx in [4, 5, 6, 7]:
-# for subj_idx in [8, 9, 10, 11]:
-# for subj_idx in [12, 13, 14, 15, "all"]:
-fit_model_by_condition(model_no=1, n_training_conditions=9, subj_idx=14, n=10)
-# for model_no in [2, 3]:
+# fit_model_by_condition(model_no=1, n_training_conditions=9, subj_idx="all")
 
 ### Cross-validation
 #
