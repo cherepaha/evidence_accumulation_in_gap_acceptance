@@ -4,6 +4,7 @@ import pandas as pd
 import helper
 import os
 
+
 def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9, test_conditions="all"):
     '''
     NB: This script can (and should) be run in parallel in several different python consoles, one subject per console
@@ -101,7 +102,8 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
 
     return fitted_model
 
-# fit_model_by_condition(model_no=1, n_training_conditions=9, subj_idx="all")
+
+fit_model_by_condition(model_no=2, n_training_conditions=9, subj_idx=1)
 
 ### Cross-validation
 #
