@@ -80,50 +80,58 @@ def get_psf_ci(data):
     return ci.reset_index().rename(columns={"index": "tta_condition"})
 
 
-def get_mean_sem(data, var="RT", n_cutoff=2):
-    mean = data.groupby("tta_condition")[var].mean()
-    sem = data.groupby("tta_condition")[var].apply(lambda x: scipy.stats.sem(x, axis=None, ddof=0))
-    n = data.groupby("tta_condition").size()
+def get_mean_sem(data, var="RT", groupby_var="tta_condition", n_cutoff=2):
+    mean = data.groupby(groupby_var)[var].mean()
+    sem = data.groupby(groupby_var)[var].apply(lambda x: scipy.stats.sem(x, axis=None, ddof=0))
+    n = data.groupby(groupby_var).size()
     data_mean_sem = pd.DataFrame({"mean": mean, "sem": sem, "n": n}, index=mean.index)
     data_mean_sem = data_mean_sem[data_mean_sem.n > n_cutoff]
 
     return data_mean_sem
 
-def plot_all_subj_p_go(ax, exp_data, d_condition, marker, color, marker_offset=0):
-    between_subj_mean = exp_data[(exp_data.d_condition==d_condition)].groupby(["subj_id", "tta_condition"]).mean()
-    data_subj_d_measures = get_mean_sem(between_subj_mean.reset_index(), var="is_go_decision", n_cutoff=2)
-    ax.errorbar(data_subj_d_measures.index+marker_offset, data_subj_d_measures["mean"], yerr=data_subj_d_measures["sem"],
-                    ls="", marker=marker, ms=9, color=color)
 
-def plot_subj_p_go(ax, exp_data, d_condition, subj_id, marker, color):
-    data_subj_d_measures = exp_data[(exp_data.subj_id==subj_id) & (exp_data.d_condition==d_condition)]
+def plot_all_subj_p_go(ax, exp_measures, d_condition, marker, color, marker_offset=0):
+    between_subj_mean = exp_measures[(exp_measures.d_condition == d_condition)].groupby(
+        ["subj_id", "tta_condition"]).mean()
+    data_subj_d_measures = get_mean_sem(between_subj_mean.reset_index(), var="is_go_decision", n_cutoff=2)
+    ax.errorbar(data_subj_d_measures.index + marker_offset, data_subj_d_measures["mean"],
+                yerr=data_subj_d_measures["sem"],
+                ls="", marker=marker, ms=9, color=color)
+
+
+def plot_subj_p_go(ax, exp_measures, d_condition, subj_id, marker, color):
+    data_subj_d_measures = exp_measures[(exp_measures.subj_id == subj_id) & (exp_measures.d_condition == d_condition)]
     psf_ci = get_psf_ci(data_subj_d_measures)
     ax.plot(psf_ci.tta_condition, psf_ci.p_go, ls="", marker=marker, ms=9, color=color, zorder=10)
     ax.vlines(x=psf_ci.tta_condition, ymin=psf_ci.ci_l, ymax=psf_ci.ci_r, color=color, zorder=10)
 
-def plot_subj_rt(ax, exp_data, d_condition, subj_id, marker, color, marker_offset=0):
-    if subj_id=="all":
-        between_subj_mean = exp_data[(exp_data.d_condition==d_condition) & (exp_data.is_go_decision)].groupby(["subj_id", "tta_condition"]).mean()
+
+def plot_subj_rt(ax, exp_measures, d_condition, subj_id, marker, color, marker_offset=0):
+    if subj_id == "all":
+        between_subj_mean = exp_measures[
+            (exp_measures.d_condition == d_condition) & (exp_measures.is_go_decision)].groupby(
+            ["subj_id", "tta_condition"]).mean()
         measures = between_subj_mean.reset_index()
     else:
-        measures = exp_data[(exp_data.subj_id==subj_id) & (exp_data.d_condition==d_condition) & (exp_data.is_go_decision)]
+        measures = exp_measures[(exp_measures.subj_id == subj_id) & (exp_measures.d_condition == d_condition) & (
+            exp_measures.is_go_decision)]
 
-    if len(measures)>0:
+    if len(measures) > 0:
         measures_mean_sem = get_mean_sem(measures, var="RT", n_cutoff=2)
-        ax.errorbar(measures_mean_sem.index+marker_offset, measures_mean_sem["mean"], yerr=measures_mean_sem["sem"],
-                        ls="", marker=marker, ms=9, color=color)
+        ax.errorbar(measures_mean_sem.index + marker_offset, measures_mean_sem["mean"], yerr=measures_mean_sem["sem"],
+                    ls="", marker=marker, ms=9, color=color)
 
 
 def plot_condition_vincentized_dist(ax, condition, condition_data, kind="cdf"):
     # colors = dict(zip([90,120,150], [plt.cm.viridis(r) for r in np.linspace(0.1,0.7,3)]))
     # markers={90: "o", 120: "s", 150: "^"}
-#     q = [0.1, 0.3, 0.5, 0.7, 0.9]
+    #     q = [0.1, 0.3, 0.5, 0.7, 0.9]
     q = np.linspace(0.01, 0.99, 15)
     condition_quantiles = condition_data.groupby("subj_id").apply(lambda d: np.quantile(a=d.RT, q=q)).mean()
 
     rt_range = np.linspace(condition_quantiles.min(), condition_quantiles.max(), len(q))
     step = rt_range[1] - rt_range[0]
-    rt_grid = np.concatenate([rt_range[:3]-3*step, rt_range, rt_range[-3:]+step*3])
+    rt_grid = np.concatenate([rt_range[:3] - 3 * step, rt_range, rt_range[-3:] + step * 3])
     vincentized_cdf = np.interp(rt_grid, condition_quantiles, q, left=0, right=1)
     # vincentized_pdf = differentiate(rt_grid, vincentized_cdf)
 
@@ -131,16 +139,18 @@ def plot_condition_vincentized_dist(ax, condition, condition_data, kind="cdf"):
     ax.set_ylim([-0.05, 1.1])
     ax.set_yticks([0.0, 0.5, 1.0])
 
+
 def decorate_axis(ax, condition):
     if (((condition["d"] == 90) & (condition["TTA"] == 6))
-        | ((condition["d"] == 90) & (condition["TTA"] == 5))
-        | ((condition["d"] == 120) & (condition["TTA"] == 4))):
+            | ((condition["d"] == 90) & (condition["TTA"] == 5))
+            | ((condition["d"] == 120) & (condition["TTA"] == 4))):
         ax.text(0.5, 1.02, "TTA=%is" % condition["TTA"], fontsize=16, transform=ax.transAxes,
-                    horizontalalignment="center", verticalalignment="center")
+                horizontalalignment="center", verticalalignment="center")
 
     if condition["TTA"] == 6:
         ax.text(1.0, 0.5, "d=%im" % condition["d"], fontsize=16, transform=ax.transAxes, rotation=-90,
-            horizontalalignment="center", verticalalignment="center")
+                horizontalalignment="center", verticalalignment="center")
+
 
 def plot_vincentized_dist(fig, axes, exp_data, model_rts, model_color="black", plot_data=True):
     conditions = [{"d": d, "TTA": TTA}
