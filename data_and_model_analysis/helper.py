@@ -5,7 +5,8 @@ import scipy
 import ddm
 import os
 import csv
-
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 def merge_csv(directory):
     fout = open(directory + "_parameters_fitted.csv", "w+")
@@ -188,3 +189,53 @@ def plot_vincentized_dist(fig, axes, exp_data, model_rts, model_color="black", p
         fig.text(0.04, 0.15, "Cumulative distribution function", fontsize=16, rotation=90)
 
     return fig, axes
+
+def plot_cross_validation(exp_data, model_measures):
+    model_measures = model_measures[(model_measures.tta_condition>=4.0) & (model_measures.tta_condition<=6.0)]
+
+    d_conditions = [90, 120, 150]
+    colors = [plt.cm.viridis(r) for r in np.linspace(0.1,0.7,len(d_conditions))]
+    markers=["o", "s", "^"]
+    marker_size=9
+    marker_offset = 0.05
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6,3))
+
+    for d_condition, marker, color in zip(d_conditions, markers, colors):
+        model_subj_d_measures = model_measures[(model_measures.subj_id=="all")  & (model_measures.d_condition==d_condition)]
+        # Model
+        ax1.plot(model_subj_d_measures.tta_condition+marker_offset, model_subj_d_measures["is_go_decision"],
+                    color=color, label=d_condition, ls="--", lw=1, marker=marker, ms=marker_size, fillstyle="none")
+        ax2.plot(model_subj_d_measures.tta_condition+marker_offset, model_subj_d_measures["RT"],
+                color=color, label=d_condition, ls="--", lw=1, marker=marker, ms=marker_size, fillstyle="none")
+
+        # Data
+        plot_all_subj_p_go(ax1, exp_data, d_condition, marker, color, -marker_offset)
+        plot_subj_rt(ax2, exp_data, d_condition, "all", marker, color, -marker_offset)
+
+    fig.text(0.35, -0.05, "Time-to-arrival (TTA), s", fontsize=16)
+
+    ax1.set_xticks([4, 5, 6])
+    ax2.set_xticks([4, 5, 6])
+
+    ax1.legend().remove()
+    ax2.legend().remove()
+
+    ax1.set_ylabel("Probability of go", fontsize=16)
+    ax2.set_ylabel("Response time", fontsize=16)
+
+    ax1.set_ylim((0.0, 1.0))
+    ax2.set_ylim((0.3, 0.8))
+
+    sns.despine(offset=5, trim=True)
+    plt.tight_layout()
+
+    legend_elements = ([Line2D([0], [0], color=color, marker=marker, ms=marker_size, lw=1, ls="--", fillstyle="none", label="Model predictions,")
+                           for d_condition, marker, color in zip(d_conditions, markers, colors)]
+                       + [Line2D([0], [0], color=color, marker=marker, ms=marker_size, lw=0, label="data, d=%im" % (d_condition))
+                           for d_condition, marker, color in zip(d_conditions, markers, colors)])
+
+    fig.legend(handles=legend_elements, loc="center left", bbox_to_anchor=(1.0, 0.5), fontsize=16, handlelength=1.5, columnspacing=0.2,
+               frameon=False, ncol=2)
+
+    return fig
