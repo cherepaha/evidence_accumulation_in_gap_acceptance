@@ -81,7 +81,7 @@ def get_psf_ci(data):
     return ci.reset_index().rename(columns={"index": "tta_condition"})
 
 
-def get_mean_sem(data, var="RT", groupby_var="tta_condition", n_cutoff=2):
+def get_mean_sem(data, var="RT", groupby_var="tta_condition", n_cutoff=3):
     mean = data.groupby(groupby_var)[var].mean()
     sem = data.groupby(groupby_var)[var].apply(lambda x: scipy.stats.sem(x, axis=None, ddof=0))
     n = data.groupby(groupby_var).size()
@@ -91,13 +91,13 @@ def get_mean_sem(data, var="RT", groupby_var="tta_condition", n_cutoff=2):
     return data_mean_sem
 
 
-def plot_all_subj_p_go(ax, exp_measures, d_condition, marker, color, marker_offset=0):
+def plot_all_subj_p_go(ax, exp_measures, d_condition, marker, color, marker_offset=0, ms=9, alpha=1.0):
     between_subj_mean = exp_measures[(exp_measures.d_condition == d_condition)].groupby(
         ["subj_id", "tta_condition"]).mean()
-    data_subj_d_measures = get_mean_sem(between_subj_mean.reset_index(), var="is_go_decision", n_cutoff=2)
+    data_subj_d_measures = get_mean_sem(between_subj_mean.reset_index(), var="is_go_decision")
     ax.errorbar(data_subj_d_measures.index + marker_offset, data_subj_d_measures["mean"],
                 yerr=data_subj_d_measures["sem"],
-                ls="", marker=marker, ms=9, color=color)
+                ls="", marker=marker, ms=ms, alpha=alpha, color=color)
 
 
 def plot_subj_p_go(ax, exp_measures, d_condition, subj_id, marker, color):
@@ -107,7 +107,7 @@ def plot_subj_p_go(ax, exp_measures, d_condition, subj_id, marker, color):
     ax.vlines(x=psf_ci.tta_condition, ymin=psf_ci.ci_l, ymax=psf_ci.ci_r, color=color, zorder=10)
 
 
-def plot_subj_rt(ax, exp_measures, d_condition, subj_id, marker, color, marker_offset=0):
+def plot_subj_rt(ax, exp_measures, d_condition, subj_id, marker, color, marker_offset=0, ms=9, alpha=1.0):
     if subj_id == "all":
         between_subj_mean = exp_measures[
             (exp_measures.d_condition == d_condition) & (exp_measures.is_go_decision)].groupby(
@@ -118,9 +118,9 @@ def plot_subj_rt(ax, exp_measures, d_condition, subj_id, marker, color, marker_o
             exp_measures.is_go_decision)]
 
     if len(measures) > 0:
-        measures_mean_sem = get_mean_sem(measures, var="RT", n_cutoff=2)
+        measures_mean_sem = get_mean_sem(measures, var="RT", n_cutoff=3)
         ax.errorbar(measures_mean_sem.index + marker_offset, measures_mean_sem["mean"], yerr=measures_mean_sem["sem"],
-                    ls="", marker=marker, ms=9, color=color)
+                    ls="", marker=marker, ms=ms, color=color, alpha=alpha)
 
 
 def plot_condition_vincentized_dist(ax, condition, condition_data, kind="cdf"):
