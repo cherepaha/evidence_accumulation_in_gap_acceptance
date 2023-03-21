@@ -1,3 +1,5 @@
+import pyddm
+
 import models
 import loss_functions
 import pandas as pd
@@ -19,11 +21,11 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
     print("Model %i, subj idx %s" % (model_no, str(subj_idx)))
 
     if model_no == 1:
-        model = models.ModelDynamicDriftCollapsingBounds()
+        model = models.ModelDynamicDriftCollapsingBoundsTta()
     if model_no == 2:
-        model = models.ModelDynamicDriftFixedBounds()
+        model = models.ModelDynamicDriftCollapsingBoundsTtaDistance()
     if model_no == 3:
-        model = models.ModelStaticDriftFixedBounds()
+        model = models.ModelDynamicDriftCollapsingBoundsGeneralizedGap()
     else:
         ValueError("model_no should be 1, 2, or 3")
 
@@ -42,6 +44,7 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
         subj_id = "all"
         subj_data = exp_data
         loss = loss_functions.LossWLSVincent
+        # loss = pyddm.LossRobustLikelihood
     else:
         subj_id = subjects[subj_idx]
         subj_data = exp_data[(exp_data.subj_id == subj_id)]
@@ -103,19 +106,4 @@ def fit_model_by_condition(model_no=1, subj_idx=0, n=1, n_training_conditions=9,
     return fitted_model
 
 
-fit_model_by_condition(model_no=2, n_training_conditions=9, subj_idx=1)
-
-### Cross-validation
-#
-# test_conditions = [{'tta': 4.0, 'd': 90.0},
-#                        {'tta': 4.0, 'd': 150.0},
-#                        {'tta': 4.0, 'd': 120.0},
-#                        {'tta': 5.0, 'd': 90.0},
-#                        {'tta': 5.0, 'd': 150.0},
-#                        {'tta': 5.0, 'd': 120.0},
-#                        {'tta': 6.0, 'd': 90.0},
-#                        {'tta': 6.0, 'd': 150.0},
-#                        {'tta': 6.0, 'd': 120.0}]
-
-
-# fit_model_by_condition(model_no=1, n_training_conditions=8, subj_idx="all", test_conditions=test_conditions)
+fit_model_by_condition(model_no=2, n_training_conditions=9, subj_idx="all", n=10)

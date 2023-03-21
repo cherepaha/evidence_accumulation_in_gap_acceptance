@@ -50,15 +50,36 @@ class BoundCollapsingTta(ddm.models.Bound):
         tau = conditions["tta_condition"] - t
         return self.b_0 / (1 + np.exp(-self.k * (tau - self.tta_crit)))
 
+class BoundCollapsingTtaDistance(ddm.models.Bound):
+    name = "Bounds dynamically collapsing with TTA and distance"
+    required_parameters = ["b_0", "k", "beta_boundary", "theta_boundary"]
+    required_conditions = ["tta_condition", "d_condition"]
+
+    def get_bound(self, t, conditions, **kwargs):
+        tta = conditions["tta_condition"] - t
+        d = (conditions["d_condition"] - t * conditions["d_condition"] / conditions["tta_condition"])
+        return self.b_0 / (1 + np.exp(-self.k * (tta + self.beta_boundary*d - self.theta_boundary)))
+
+class BoundCollapsingGeneralizedGap(ddm.models.Bound):
+    name = "Bounds dynamically collapsing with generalized gap"
+    required_parameters = ["b_0", "k", "beta", "theta"]
+    required_conditions = ["tta_condition", "d_condition"]
+
+    def get_bound(self, t, conditions, **kwargs):
+        tta = conditions["tta_condition"] - t
+        d = (conditions["d_condition"] - t * conditions["d_condition"] / conditions["tta_condition"])
+        generalized_gap = (tta + self.beta * d)
+
+        return self.b_0 / (1 + np.exp(-self.k * (generalized_gap - self.theta)))
 
 class ModelStaticDriftFixedBounds():
     # simplest model, vanilla DDM with drift dependent on TTA and distance
-    T_dur = 2.5
+    T_dur = 3.0
     param_names = ["alpha", "beta", "theta", "b", "ndt_location", "ndt_scale"]
 
     def __init__(self):
-        self.overlay = OverlayNonDecisionGaussian(ndt_location=ddm.Fittable(minval=0, maxval=1.0),
-                                                  ndt_scale=ddm.Fittable(minval=0.001, maxval=0.3))
+        self.overlay = OverlayNonDecisionGaussian(ndt_location=ddm.Fittable(minval=0, maxval=2.5),
+                                                  ndt_scale=ddm.Fittable(minval=0.001, maxval=1.0))
         self.drift = DriftTtaDistanceStatic(alpha=ddm.Fittable(minval=0.1, maxval=5),
                                             beta=ddm.Fittable(minval=0, maxval=1.0),
                                             theta=ddm.Fittable(minval=4, maxval=60))
@@ -82,7 +103,7 @@ class ModelDynamicDriftFixedBounds(ModelStaticDriftFixedBounds):
                                overlay=self.overlay, T_dur=self.T_dur)
 
 
-class ModelDynamicDriftCollapsingBounds(ModelDynamicDriftFixedBounds):
+class ModelDynamicDriftCollapsingBoundsTta(ModelDynamicDriftFixedBounds):
     param_names = ["alpha", "beta", "theta", "b_0", "k", "tta_crit", "ndt_location", "ndt_scale"]
 
     def __init__(self):
@@ -95,3 +116,45 @@ class ModelDynamicDriftCollapsingBounds(ModelDynamicDriftFixedBounds):
         self.model = ddm.Model(name="Dynamic drift defined by real-time TTA and d, bounds collapsing with TTA",
                                drift=self.drift, noise=ddm.NoiseConstant(noise=1), bound=self.bound,
                                overlay=self.overlay, T_dur=self.T_dur)
+
+class ModelDynamicDriftCollapsingBoundsTtaDistance(ModelDynamicDriftCollapsingBoundsTta):
+    param_names = ["alpha", "beta", "theta", "b_0", "k", "beta_boundary", "theta_boundary", "ndt_location", "ndt_scale"]
+
+    def __init__(self):
+        super().__init__()
+
+        self.drift = DriftTtaDistanceDynamic(alpha=ddm.Fittable(minval=0.1, maxval=5.0),
+                                             beta=ddm.Fittable(minval=0, maxval=1.0),
+                                             theta=ddm.Fittable(minval=4, maxval=60))
+
+        self.bound = BoundCollapsingTtaDistance(b_0=ddm.Fittable(minval=0.5, maxval=5),
+                                                k=ddm.Fittable(minval=0.1, maxval=2),
+                                                beta_boundary=ddm.Fittable(minval=0, maxval=1.0),
+                                                theta_boundary=ddm.Fittable(minval=4, maxval=60))
+
+        self.model = ddm.Model(name="Dynamic drift defined by real-time TTA and d, bounds collapsing with TTA and distance",
+                               drift=self.drift, noise=ddm.NoiseConstant(noise=1), bound=self.bound,
+                               overlay=self.overlay, T_dur=self.T_dur)
+
+class ModelDynamicDriftCollapsingBoundsGeneralizedGap(ModelDynamicDriftCollapsingBoundsTta):
+    param_names = ["alpha", "beta", "theta", "b_0", "k", "ndt_location", "ndt_scale"]
+
+    def __init__(self):
+        super().__init__()
+
+        beta = ddm.Fittable(minval=0, maxval=1.0)
+        theta=ddm.Fittable(minval=4, maxval=60)
+
+        self.drift = DriftTtaDistanceDynamic(alpha=ddm.Fittable(minval=0.1, maxval=5.0),
+                                             beta=beta,
+                                             theta=theta)
+
+        self.bound = BoundCollapsingGeneralizedGap(b_0=ddm.Fittable(minval=0.5, maxval=5),
+                                                k=ddm.Fittable(minval=0.1, maxval=2),
+                                                beta=beta,
+                                                theta=theta)
+
+        self.model = ddm.Model(name="Dynamic drift defined by real-time TTA and d, bounds collapsing with generalized gap",
+                               drift=self.drift, noise=ddm.NoiseConstant(noise=1), bound=self.bound,
+                               overlay=self.overlay, T_dur=self.T_dur)
+
